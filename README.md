@@ -34,3 +34,4 @@ npm run build
 현재 데이터는 [`src/data/mock.ts`](./src/data/mock.ts)의 `ReleaseItem[]`에 분리되어 있습니다. 향후 헤르메스 XLSX → staging DB → 승인된 `release_items` API 흐름을 붙일 때 페이지 컴포넌트를 바꾸지 않고 이 데이터 공급부만 교체할 수 있습니다.
 
 이번 프로토타입에는 회원 인증, 실제 DB, XLSX 운영 콘솔, 예약 웹푸시와 결제는 포함하지 않았습니다. 알림 설정은 제품 흐름을 검증하기 위해 브라우저 로컬 저장소에 보관합니다.
+# trove
