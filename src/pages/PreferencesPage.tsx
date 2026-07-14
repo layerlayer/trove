@@ -1,12 +1,13 @@
 import { ArrowLeft, Check, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { StatusBar } from "../components/StatusBar";
 import { interests } from "../data/mock";
 import { useTrove } from "../context/TroveContext";
 
 export function PreferencesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { state, toggleInterest, completeOnboarding } = useTrove();
   const [query, setQuery] = useState("");
 
@@ -24,7 +25,8 @@ export function PreferencesPage() {
   const finish = () => {
     if (state.interests.length === 0) return;
     completeOnboarding();
-    navigate("/home", { replace: true });
+    const returnTo = (location.state as { returnTo?: string } | null)?.returnTo ?? "/home";
+    navigate(returnTo, { replace: true });
   };
 
   return (
@@ -35,7 +37,7 @@ export function PreferencesPage() {
           className="icon-button"
           type="button"
           aria-label="뒤로 가기"
-          onClick={() => navigate(state.onboardingComplete ? "/home" : "/home")}
+          onClick={() => navigate((location.state as { returnTo?: string } | null)?.returnTo ?? "/home")}
         >
           <ArrowLeft size={28} strokeWidth={1.8} />
         </button>

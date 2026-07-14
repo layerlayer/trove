@@ -91,6 +91,10 @@ export const releases: ReleaseItem[] = [
       { label: "형태", value: "정규 앨범" },
     ],
     sourceName: "공식 아티스트 채널",
+    description:
+      "새로운 음악과 비주얼로 돌아오는 G-DRAGON의 정규 앨범입니다. 공개되는 트랙과 발매 일정의 변화를 Trove에서 계속 확인할 수 있어요.",
+    lastVerifiedAt: addDaysFromToday(0),
+    waitingCount: 2840,
   },
   {
     id: "akmu-concert",
@@ -115,6 +119,10 @@ export const releases: ReleaseItem[] = [
       { label: "주최", value: "YG Entertainment" },
     ],
     sourceName: "공식 공연 공지",
+    description:
+      "AKMU의 음악을 한 자리에서 만나는 단독 공연입니다. 공연 일정과 예매 관련 변동 사항을 놓치지 않도록 기다림에 담아보세요.",
+    lastVerifiedAt: addDaysFromToday(0),
+    waitingCount: 1920,
   },
   {
     id: "air-jordan-travis",
@@ -140,6 +148,10 @@ export const releases: ReleaseItem[] = [
       { label: "지역", value: "대한민국" },
     ],
     sourceName: "Nike SNKRS",
+    description:
+      "클래식한 실루엣을 새로운 컬러와 디테일로 풀어낸 한정 스니커즈 드롭입니다.",
+    lastVerifiedAt: addDaysFromToday(-1),
+    waitingCount: 3410,
   },
   {
     id: "nintendo-switch-2",
@@ -164,6 +176,10 @@ export const releases: ReleaseItem[] = [
       { label: "지역", value: "글로벌" },
     ],
     sourceName: "Nintendo 공식 사이트",
+    description:
+      "새로운 코스와 플레이 방식으로 확장된 마리오 카트의 다음 레이싱 경험입니다.",
+    lastVerifiedAt: addDaysFromToday(0),
+    waitingCount: 4210,
   },
   {
     id: "joker-directors-cut",
@@ -285,6 +301,10 @@ export const releases: ReleaseItem[] = [
       { label: "지역", value: "대한민국" },
     ],
     sourceName: "Disney 공식 사이트",
+    description:
+      "우디와 버즈, 그리고 장난감 친구들의 새로운 이야기를 그리는 픽사의 애니메이션입니다.",
+    lastVerifiedAt: addDaysFromToday(-1),
+    waitingCount: 5180,
   },
   {
     id: "animal-crossing-city",
@@ -357,6 +377,61 @@ export const releases: ReleaseItem[] = [
       { label: "지역", value: "글로벌" },
     ],
     sourceName: "Star Wars 공식 사이트",
+    lastVerifiedAt: addDaysFromToday(-2),
+    waitingCount: 2360,
+  },
+  {
+    id: "project-orbit",
+    slug: "project-orbit",
+    title: "Project Orbit",
+    category: "game",
+    categoryLabel: "출시 예정",
+    releaseAt: null,
+    releaseWindow: "2027년 출시 예정",
+    datePrecision: "year",
+    dateLabel: "출시일",
+    status: "tentative",
+    tags: ["모바일 게임", "RPG", "출시일 미정"],
+    interestIds: ["nintendo", "league-of-legends"],
+    thumbnail: "/images/topic-lol.jpg",
+    gallery: [
+      "/images/topic-lol.jpg",
+      "/images/detail-gallery-4.jpg",
+      "/images/home-hero-a.jpg",
+    ],
+    meta: [
+      { label: "플랫폼", value: "iOS · Android" },
+      { label: "장르", value: "수집형 RPG" },
+      { label: "지역", value: "글로벌" },
+    ],
+    sourceName: "공식 티저 사이트",
+    description:
+      "정확한 출시일은 아직 공개되지 않았습니다. Trove에 담아두면 일정이 확정되거나 변경될 때 확인할 수 있어요.",
+    lastVerifiedAt: addDaysFromToday(0),
+    waitingCount: 860,
+  },
+  {
+    id: "gd-single-archive",
+    slug: "gd-single-archive",
+    title: "GD 디지털 싱글",
+    category: "music",
+    categoryLabel: "발매일",
+    releaseAt: addDaysFromToday(-5),
+    dateLabel: "발매일",
+    status: "released",
+    tags: ["K-pop", "싱글", "GD"],
+    interestIds: ["gd"],
+    thumbnail: "/images/topic-gd.jpg",
+    gallery: ["/images/topic-gd.jpg", "/images/home-hero-b.jpg"],
+    meta: [
+      { label: "아티스트", value: "G-DRAGON" },
+      { label: "형태", value: "디지털 싱글" },
+      { label: "상태", value: "발매 완료" },
+    ],
+    sourceName: "공식 아티스트 채널",
+    description: "기다림이 완료된 콘텐츠도 Trove에서 기록으로 남겨둘 수 있어요.",
+    lastVerifiedAt: addDaysFromToday(-5),
+    waitingCount: 1760,
   },
 ];
 

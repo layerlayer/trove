@@ -41,7 +41,7 @@ export function ReleaseCard({
         <button
           className={`favorite-button ${favorite ? "is-active" : ""}`}
           type="button"
-          aria-label={favorite ? `${item.title} 좋아요 해제` : `${item.title} 좋아요`}
+          aria-label={favorite ? `${item.title} Trove에서 빼기` : `${item.title} Trove에 담기`}
           aria-pressed={favorite}
           onClick={(event) => {
             event.stopPropagation();

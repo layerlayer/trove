@@ -19,21 +19,24 @@ export function parseLocalDate(iso: string): Date {
   return new Date(year, month - 1, day, 12, 0, 0, 0);
 }
 
-export function daysUntil(iso: string): number {
+export function daysUntil(iso: string | null): number | null {
+  if (!iso) return null;
   const target = parseLocalDate(iso);
   const today = new Date();
   today.setHours(12, 0, 0, 0);
   return Math.ceil((target.getTime() - today.getTime()) / DAY_MS);
 }
 
-export function dDayLabel(iso: string): string {
+export function dDayLabel(iso: string | null): string {
   const days = daysUntil(iso);
+  if (days === null) return "일정 미정";
   if (days === 0) return "D-Day";
   if (days < 0) return `D+${Math.abs(days)}`;
   return `D-${days}`;
 }
 
-export function formatDate(iso: string, separator = "."): string {
+export function formatDate(iso: string | null, separator = "."): string {
+  if (!iso) return "출시일 미정";
   const date = parseLocalDate(iso);
   return [
     date.getFullYear(),

@@ -1,8 +1,10 @@
 export type Category = "music" | "game" | "lifestyle" | "movie";
 
-export type AlertPreset = "D-7" | "D-1" | "D-Day";
+export type AlertPreset = "D-7" | "D-1" | "D-Day" | "DATE_CONFIRMED" | "DATE_CHANGED";
 
-export type ReleaseStatus = "confirmed" | "tentative" | "delayed";
+export type ReleaseStatus = "confirmed" | "tentative" | "delayed" | "released";
+
+export type DatePrecision = "exact_day" | "month" | "year" | "tba";
 
 export interface Interest {
   id: string;
@@ -22,7 +24,9 @@ export interface ReleaseItem {
   title: string;
   category: Category;
   categoryLabel: string;
-  releaseAt: string;
+  releaseAt: string | null;
+  releaseWindow?: string;
+  datePrecision?: DatePrecision;
   dateLabel: string;
   status: ReleaseStatus;
   tags: string[];
@@ -32,6 +36,23 @@ export interface ReleaseItem {
   galleryPositions?: string[];
   meta: ReleaseMeta[];
   sourceName: string;
+  sourceUrl?: string;
+  description?: string;
+  lastVerifiedAt?: string;
+  waitingCount?: number;
+}
+
+export interface TroveUser {
+  id: string;
+  name: string;
+  email: string;
+  provider: "email" | "google";
+}
+
+export interface UserSettings {
+  defaultAlerts: AlertPreset[];
+  weeklyDigest: boolean;
+  notificationPermission: NotificationPermission | "unsupported";
 }
 
 export interface TroveState {
@@ -40,4 +61,6 @@ export interface TroveState {
   favorites: string[];
   alerts: Record<string, AlertPreset[]>;
   unreadNotifications: number;
+  user: TroveUser | null;
+  settings: UserSettings;
 }

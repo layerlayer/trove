@@ -5,7 +5,6 @@ type NavId = "home" | "discover" | "trove" | "profile";
 
 interface BottomNavProps {
   active: NavId;
-  onComingSoon: (label: string) => void;
 }
 
 const navItems = [
@@ -15,14 +14,10 @@ const navItems = [
   { id: "profile" as const, label: "Profile", icon: UserCircle },
 ];
 
-export function BottomNav({ active, onComingSoon }: BottomNavProps) {
+export function BottomNav({ active }: BottomNavProps) {
   const navigate = useNavigate();
 
-  const handleNavigation = (id: NavId, label: string) => {
-    if (id === "home") navigate("/home");
-    else if (id === "trove") navigate("/calendar");
-    else onComingSoon(label);
-  };
+  const handleNavigation = (id: NavId) => navigate(`/${id}`);
 
   return (
     <nav className="bottom-nav" aria-label="주요 메뉴">
@@ -34,7 +29,7 @@ export function BottomNav({ active, onComingSoon }: BottomNavProps) {
             className={`bottom-nav__item ${selected ? "is-active" : ""}`}
             type="button"
             aria-current={selected ? "page" : undefined}
-            onClick={() => handleNavigation(id, label)}
+            onClick={() => handleNavigation(id)}
           >
             <Icon size={25} strokeWidth={selected ? 2.6 : 1.8} />
             <span>{label}</span>

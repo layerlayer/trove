@@ -18,7 +18,7 @@ import {
 import type { ReleaseItem } from "../types";
 
 type CalendarView = "month" | "week";
-type CalendarSheet = "notifications" | "menu" | "month-picker" | "coming-soon" | null;
+type CalendarSheet = "notifications" | "menu" | "month-picker" | null;
 
 const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -67,15 +67,17 @@ function EventRow({ item, onOpen }: { item: ReleaseItem; onOpen: () => void }) {
 export function CalendarPage() {
   const navigate = useNavigate();
   const { state, markNotificationsRead, resetDemo } = useTrove();
-  const firstTracked = releases.find((item) => state.favorites.includes(item.id)) ?? releases[0];
-  const initialDate = parseLocalDate(firstTracked.releaseAt);
+  const firstTracked =
+    releases.find((item) => state.favorites.includes(item.id) && item.releaseAt) ??
+    releases.find((item) => item.releaseAt) ??
+    releases[0];
+  const initialDate = firstTracked.releaseAt ? parseLocalDate(firstTracked.releaseAt) : new Date();
   const [viewDate, setViewDate] = useState(
     () => new Date(initialDate.getFullYear(), initialDate.getMonth(), 1, 12),
   );
   const [selectedDate, setSelectedDate] = useState(initialDate);
   const [calendarView, setCalendarView] = useState<CalendarView>("month");
   const [sheet, setSheet] = useState<CalendarSheet>(null);
-  const [comingSoonLabel, setComingSoonLabel] = useState("");
 
   const trackedIds = useMemo(
     () => new Set([...state.favorites, ...Object.keys(state.alerts)]),
@@ -94,6 +96,7 @@ export function CalendarPage() {
   const releasesByDay = useMemo(() => {
     const map = new Map<string, ReleaseItem[]>();
     trackedReleases.forEach((item) => {
+      if (!item.releaseAt) return;
       const existing = map.get(item.releaseAt) ?? [];
       map.set(item.releaseAt, [...existing, item]);
     });
@@ -101,7 +104,7 @@ export function CalendarPage() {
   }, [trackedReleases]);
 
   const monthCount = trackedReleases.filter((item) =>
-    isSameMonth(parseLocalDate(item.releaseAt), viewDate),
+    item.releaseAt ? isSameMonth(parseLocalDate(item.releaseAt), viewDate) : false,
   ).length;
 
   const selectedIso = [
@@ -114,8 +117,8 @@ export function CalendarPage() {
   const listItems = selectedItems.length
     ? selectedItems
     : trackedReleases
-        .filter((item) => item.releaseAt >= selectedIso)
-        .sort((a, b) => a.releaseAt.localeCompare(b.releaseAt))
+        .filter((item) => item.releaseAt !== null && item.releaseAt >= selectedIso)
+        .sort((a, b) => (a.releaseAt ?? "").localeCompare(b.releaseAt ?? ""))
         .slice(0, 3);
 
   const changeMonth = (offset: number) => {
@@ -130,11 +133,6 @@ export function CalendarPage() {
     if (!isSameMonth(day, viewDate)) {
       setViewDate(new Date(day.getFullYear(), day.getMonth(), 1, 12));
     }
-  };
-
-  const showComingSoon = (label: string) => {
-    setComingSoonLabel(label);
-    setSheet("coming-soon");
   };
 
   return (
@@ -245,7 +243,7 @@ export function CalendarPage() {
         )}
       </section>
 
-      <BottomNav active="trove" onComingSoon={showComingSoon} />
+      <BottomNav active="trove" />
 
       <BottomSheet
         open={sheet === "notifications"}
@@ -307,16 +305,6 @@ export function CalendarPage() {
         </div>
       </BottomSheet>
 
-      <BottomSheet
-        open={sheet === "coming-soon"}
-        title={`${comingSoonLabel} 준비 중`}
-        description="다음 MVP에서 더 깊은 탐색과 프로필 기능을 만날 수 있어요."
-        onClose={() => setSheet(null)}
-      >
-        <button className="primary-button sheet-button" type="button" onClick={() => setSheet(null)}>
-          확인
-        </button>
-      </BottomSheet>
     </main>
   );
 }

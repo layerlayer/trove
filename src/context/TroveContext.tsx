@@ -7,17 +7,24 @@ import {
   useMemo,
   useState,
 } from "react";
-import { initialAlerts, initialFavoriteIds } from "../data/mock";
-import type { AlertPreset, TroveState } from "../types";
+import type { AlertPreset, TroveState, TroveUser } from "../types";
 
-const STORAGE_KEY = "trove-demo-state-v1";
+const STORAGE_KEY = "trove-demo-state-v2";
+const LEGACY_STORAGE_KEY = "trove-demo-state-v1";
 
 const initialState: TroveState = {
   onboardingComplete: false,
-  interests: ["supreme", "gd", "nintendo"],
-  favorites: initialFavoriteIds,
-  alerts: initialAlerts as Record<string, AlertPreset[]>,
+  interests: [],
+  favorites: [],
+  alerts: {},
   unreadNotifications: 3,
+  user: null,
+  settings: {
+    defaultAlerts: ["D-1", "D-Day"],
+    weeklyDigest: true,
+    notificationPermission:
+      typeof Notification === "undefined" ? "unsupported" : Notification.permission,
+  },
 };
 
 interface TroveContextValue {
@@ -27,6 +34,11 @@ interface TroveContextValue {
   toggleFavorite: (id: string) => void;
   setAlertPresets: (id: string, presets: AlertPreset[]) => void;
   markNotificationsRead: () => void;
+  signIn: (email: string, provider?: TroveUser["provider"]) => void;
+  signOut: () => void;
+  setDefaultAlerts: (presets: AlertPreset[]) => void;
+  setWeeklyDigest: (enabled: boolean) => void;
+  setNotificationPermission: (permission: NotificationPermission | "unsupported") => void;
   resetDemo: () => void;
 }
 
@@ -34,10 +46,16 @@ const TroveContext = createContext<TroveContextValue | null>(null);
 
 function readState(): TroveState {
   try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
+    const saved =
+      window.localStorage.getItem(STORAGE_KEY) ??
+      window.localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!saved) return initialState;
     const parsed = JSON.parse(saved) as Partial<TroveState>;
-    return { ...initialState, ...parsed };
+    return {
+      ...initialState,
+      ...parsed,
+      settings: { ...initialState.settings, ...parsed.settings },
+    };
   } catch {
     return initialState;
   }
@@ -64,12 +82,18 @@ export function TroveProvider({ children }: PropsWithChildren) {
   }, []);
 
   const toggleFavorite = useCallback((id: string) => {
-    setState((current) => ({
-      ...current,
-      favorites: current.favorites.includes(id)
-        ? current.favorites.filter((item) => item !== id)
-        : [...current.favorites, id],
-    }));
+    setState((current) => {
+      if (current.favorites.includes(id)) {
+        const alerts = { ...current.alerts };
+        delete alerts[id];
+        return {
+          ...current,
+          favorites: current.favorites.filter((item) => item !== id),
+          alerts,
+        };
+      }
+      return { ...current, favorites: [...current.favorites, id] };
+    });
   }, []);
 
   const setAlertPresets = useCallback((id: string, presets: AlertPreset[]) => {
@@ -77,7 +101,11 @@ export function TroveProvider({ children }: PropsWithChildren) {
       const alerts = { ...current.alerts };
       if (presets.length === 0) delete alerts[id];
       else alerts[id] = presets;
-      return { ...current, alerts };
+      const favorites =
+        presets.length > 0 && !current.favorites.includes(id)
+          ? [...current.favorites, id]
+          : current.favorites;
+      return { ...current, alerts, favorites };
     });
   }, []);
 
@@ -85,8 +113,51 @@ export function TroveProvider({ children }: PropsWithChildren) {
     setState((current) => ({ ...current, unreadNotifications: 0 }));
   }, []);
 
+  const signIn = useCallback((email: string, provider: TroveUser["provider"] = "email") => {
+    const localName = email.split("@")[0].replace(/[._-]+/g, " ").trim();
+    const name = localName
+      ? localName
+          .split(" ")
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" ")
+      : "Trove 사용자";
+    setState((current) => ({
+      ...current,
+      user: { id: `local-${email.toLowerCase()}`, name, email, provider },
+    }));
+  }, []);
+
+  const signOut = useCallback(() => {
+    setState((current) => ({ ...current, user: null }));
+  }, []);
+
+  const setDefaultAlerts = useCallback((presets: AlertPreset[]) => {
+    setState((current) => ({
+      ...current,
+      settings: { ...current.settings, defaultAlerts: presets },
+    }));
+  }, []);
+
+  const setWeeklyDigest = useCallback((enabled: boolean) => {
+    setState((current) => ({
+      ...current,
+      settings: { ...current.settings, weeklyDigest: enabled },
+    }));
+  }, []);
+
+  const setNotificationPermission = useCallback(
+    (permission: NotificationPermission | "unsupported") => {
+      setState((current) => ({
+        ...current,
+        settings: { ...current.settings, notificationPermission: permission },
+      }));
+    },
+    [],
+  );
+
   const resetDemo = useCallback(() => {
     window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
     setState(initialState);
   }, []);
 
@@ -98,13 +169,23 @@ export function TroveProvider({ children }: PropsWithChildren) {
       toggleFavorite,
       setAlertPresets,
       markNotificationsRead,
+      signIn,
+      signOut,
+      setDefaultAlerts,
+      setWeeklyDigest,
+      setNotificationPermission,
       resetDemo,
     }),
     [
       completeOnboarding,
       markNotificationsRead,
       resetDemo,
+      setDefaultAlerts,
       setAlertPresets,
+      setNotificationPermission,
+      setWeeklyDigest,
+      signIn,
+      signOut,
       state,
       toggleFavorite,
       toggleInterest,
