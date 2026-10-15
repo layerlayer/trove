@@ -1,5 +1,5 @@
 import { type PropsWithChildren, useEffect } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigationType } from "react-router-dom";
 import { StatusBar } from "./components/StatusBar";
 import { useTrove } from "./context/TroveContext";
 import { useReleases } from "./data/ReleaseDataContext";
@@ -11,11 +11,14 @@ import { PreferencesPage } from "./pages/PreferencesPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { TrovePage } from "./pages/TrovePage";
 
+/** 새 화면으로 갈 때만 맨 위로. 뒤로 가기(POP)는 각 화면이 자리를 되살린다 */
 function ScrollToTop() {
   const location = useLocation();
+  const navigationType = useNavigationType();
   useEffect(() => {
+    if (navigationType === "POP") return;
     window.scrollTo({ top: 0, behavior: "instant" });
-  }, [location.pathname]);
+  }, [location.pathname, navigationType]);
   return null;
 }
 

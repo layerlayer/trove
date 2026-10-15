@@ -49,8 +49,9 @@ export function compareReleaseDate(a: ReleaseItem, b: ReleaseItem): number {
   return a.title.localeCompare(b.title, "ko-KR");
 }
 
+/** 어댑터 규칙과 맞춘다: 지난 날짜만 "나온 것", 오늘은 아직 기다리는 것(D-Day) */
 export function isUpcoming(item: ReleaseItem): boolean {
-  return item.status !== "released";
+  return item.status !== "released" || daysUntil(item.releaseAt) === 0;
 }
 
 export function matchesInterests(item: ReleaseItem, interests: string[]): boolean {
@@ -121,15 +122,26 @@ export function buildFeed({ releases, interests, category }: FeedInput): FeedRes
 
   const blocks: FeedBlock[] = [];
   if (!personalized) {
-    if (interests.length === 0) {
+    if (scoped.length === 0) {
+      blocks.push({
+        type: "notice",
+        key: "notice-empty",
+        title: category === "all" ? "아직 발행된 일정이 없어요" : "이 카테고리의 일정을 준비 중이에요",
+        body: category === "all" ? "운영 콘솔에서 일정이 발행되면 여기에 보여요." : "전체 탭에서 다른 기다림을 둘러보세요.",
+        ...(interests.length === 0 ? { action: "preferences" as const } : {}),
+      });
+    } else if (interests.length === 0) {
       blocks.push({
         type: "notice",
         key: "notice-pick",
         title: "관심사를 고르면 피드가 내 취향으로 바뀌어요",
-        body: "지금은 모든 기다림을 날짜순으로 보여드려요.",
+        body:
+          category === "all"
+            ? "지금은 모든 기다림을 날짜순으로 보여드려요."
+            : `지금은 ${CATEGORY_LABELS[category]} 기다림을 모두 날짜순으로 보여드려요.`,
         action: "preferences",
       });
-    } else if (scoped.length > 0 && category !== "all" && !interests.includes(categoryInterestId(category))) {
+    } else if (category !== "all" && !interests.includes(categoryInterestId(category))) {
       blocks.push({
         type: "notice",
         key: "notice-follow",
@@ -137,19 +149,12 @@ export function buildFeed({ releases, interests, category }: FeedInput): FeedRes
         body: "더하면 전체 피드에도 이 일정들이 섞여 나와요.",
         action: "follow-category",
       });
-    } else if (scoped.length > 0) {
+    } else {
       blocks.push({
         type: "notice",
         key: "notice-fallback",
         title: "관심사에 맞는 일정이 아직 없어요",
         body: "대신 모든 기다림을 날짜순으로 보여드려요.",
-      });
-    } else {
-      blocks.push({
-        type: "notice",
-        key: "notice-empty",
-        title: category === "all" ? "아직 발행된 일정이 없어요" : "이 카테고리의 일정을 준비 중이에요",
-        body: category === "all" ? "운영 콘솔에서 일정이 발행되면 여기에 보여요." : "전체 탭에서 다른 기다림을 둘러보세요.",
       });
     }
   }

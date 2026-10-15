@@ -2628,8 +2628,10 @@ img {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  margin-top: 10px;
+  margin: 0 0 -12px;
   padding: 0;
+  color: var(--lime);
+  font-size: 14px;
 }
 
 .next-up {
@@ -2683,8 +2685,8 @@ img {
 }
 
 .feed-end button {
-  margin-left: 6px;
-  padding: 0;
+  margin: -12px 0;
+  padding: 12px 6px;
   border: 0;
   background: none;
   color: var(--lime);

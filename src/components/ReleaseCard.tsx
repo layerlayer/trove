@@ -31,6 +31,8 @@ export function ReleaseCard({
     .join(" · ");
 
   const handleKey = (event: KeyboardEvent<HTMLElement>) => {
+    // 안쪽 하트 버튼에서 올라온 키 입력은 버튼이 처리하게 둔다
+    if (event.target !== event.currentTarget) return;
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       onOpen();

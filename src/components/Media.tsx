@@ -4,9 +4,10 @@ import type { Interest, ReleaseItem } from "../types";
 export function initialOf(text: string | null | undefined): string {
   const raw = (text ?? "").normalize("NFC").trim();
   // "[단독판매] 정동하", "2026 소통왕", "2026-2027 KBL" 처럼 앞에 붙은 태그·연도는 건너뛴다
+  // 괄호 ( ) 는 "(여자)아이들", "(G)I-DLE" 처럼 이름의 일부일 수 있어 건너뛰지 않는다
   const cleaned = raw
-    .replace(/^(?:\s*[[(【][^\])】]*[\])】])+\s*/u, "")
-    .replace(/^(?:19|20)\d{2}(?:[-~–](?:19|20)?\d{2})?\s+/u, "");
+    .replace(/^(?:\s*[[【][^\]】]*[\]】])+\s*/u, "")
+    .replace(/^(?:19|20)\d{2}(?:[-~–](?:19|20)?\d{2})?년?\s+/u, "");
   const pick = (source: string) => Array.from(source).find((char) => /[\p{L}\p{N}]/u.test(char));
   return (pick(cleaned) ?? pick(raw) ?? "?").toUpperCase();
 }
