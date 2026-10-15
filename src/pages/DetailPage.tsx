@@ -18,6 +18,7 @@ import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
 import { ReleaseThumb } from "../components/Media";
 import { entityInterestId } from "../data/published";
+import { useBack } from "../lib/useBack";
 import { useReleases } from "../data/ReleaseDataContext";
 import { dDayLabel, formatDate } from "../lib/date";
 import { track } from "../lib/analytics";
@@ -40,6 +41,7 @@ const tbaOptions: Array<{ id: AlertPreset; title: string; description: string }>
 export function DetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const goBack = useBack("/home");
   const location = useLocation();
   const { state, toggleFavorite, setAlertPresets } = useTrove();
   const { releases } = useReleases();
@@ -144,7 +146,7 @@ export function DetailPage() {
     <main className="app-page detail-page">
       <StatusBar />
       <header className="simple-header detail-header">
-        <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={() => navigate(-1)}><ArrowLeft size={28} strokeWidth={1.8} /></button>
+        <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={goBack}><ArrowLeft size={28} strokeWidth={1.8} /></button>
         <button className="icon-button" type="button" aria-label="공유하기" onClick={share}><Share2 size={26} strokeWidth={1.8} /></button>
       </header>
 

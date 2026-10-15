@@ -4,7 +4,7 @@
   padding-bottom: calc(48px + env(safe-area-inset-bottom));
 }
 
-.info-header {
+.info-page .info-header {
   position: sticky;
   top: 0;
 }

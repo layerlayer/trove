@@ -7,9 +7,9 @@ import { buildNotifications } from "./notifications";
 export function useUnreadNotifications(): number {
   const { releases } = useReleases();
   const { state } = useTrove();
-  const { favorites, alerts, settings, notificationsSeenAt } = state;
+  const { favorites, alerts, settings, notificationsSeenIds } = state;
   return useMemo(
-    () => buildNotifications(releases, { favorites, alerts, settings, notificationsSeenAt }).unreadCount,
-    [alerts, favorites, notificationsSeenAt, releases, settings],
+    () => buildNotifications(releases, { favorites, alerts, settings, notificationsSeenIds }).unreadCount,
+    [alerts, favorites, notificationsSeenIds, releases, settings],
   );
 }

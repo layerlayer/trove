@@ -37,3 +37,12 @@ export function track(
     // Analytics should never interrupt the product flow.
   }
 }
+
+/** MVP 데이터 초기화에서 사용 기록도 함께 지운다(개인정보 처리방침의 약속) */
+export function clearAnalytics() {
+  try {
+    window.localStorage.removeItem(ANALYTICS_KEY);
+  } catch {
+    // 저장소가 막혀 있어도 초기화는 계속된다
+  }
+}

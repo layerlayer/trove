@@ -15,7 +15,8 @@ import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
 import { useReleases } from "../data/ReleaseDataContext";
 import { track } from "../lib/analytics";
-import { dDayLabel, formatDate, toLocalIso } from "../lib/date";
+import { dDayLabel, formatDate } from "../lib/date";
+import { useBack } from "../lib/useBack";
 import {
   buildNotifications,
   firedLabel,
@@ -73,7 +74,8 @@ export function NotificationsPage() {
   const { state, markNotificationsRead } = useTrove();
   const { releases } = useReleases();
   // 화면에 들어온 순간의 "마지막으로 본 시각". 곧바로 읽음 처리해도 안 읽음 점이 그 자리에서 사라지지 않게 한 번만 잡아 둔다
-  const [seenBefore] = useState(() => state.notificationsSeenAt);
+  const [seenBefore] = useState(() => new Set(state.notificationsSeenIds));
+  const goBack = useBack("/home");
   const [authOpen, setAuthOpen] = useState(false);
   const viewedRef = useRef(false);
 
@@ -83,33 +85,34 @@ export function NotificationsPage() {
         favorites: state.favorites,
         alerts: state.alerts,
         settings: state.settings,
-        notificationsSeenAt: state.notificationsSeenAt,
+        notificationsSeenIds: state.notificationsSeenIds,
       }),
-    [releases, state.favorites, state.alerts, state.settings, state.notificationsSeenAt],
+    [releases, state.favorites, state.alerts, state.settings, state.notificationsSeenIds],
   );
 
-  // lib/notifications 와 같은 날짜 단위로 비교한다
-  const seenDay = seenBefore ? toLocalIso(new Date(seenBefore)) : null;
-  const isUnread = (entry: AppNotification) => seenDay === null || entry.at > seenDay;
+  // 들어온 순간에 잡아 둔 "본 알림" 목록으로만 판단해, 읽음 처리 뒤에도 점이 그 자리에서 사라지지 않는다
+  const isUnread = (entry: AppNotification) => !seenBefore.has(entry.id);
   const unreadCount = digest.fired.filter(isUnread).length;
 
   // 들어올 때 한 번만: 읽음 처리와 조회 기록
-  const firedCount = digest.fired.length;
+  const firedIds = digest.fired.map((entry) => entry.id).join("|");
   useEffect(() => {
     if (viewedRef.current) return;
     viewedRef.current = true;
-    markNotificationsRead();
-    track("notifications_view", { fired: firedCount });
-  }, [firedCount, markNotificationsRead]);
+    markNotificationsRead(firedIds ? firedIds.split("|") : []);
+    track("notifications_view", { fired: digest.fired.length });
+  }, [digest.fired.length, firedIds, markNotificationsRead]);
 
   const hasFavorites = state.favorites.length > 0;
+  // presetsFor 와 같은 규칙: 키가 없으면 기본 알림, 빈 배열이면 꺼진 것
+  const hasAlertsOn = state.favorites.some((id) => (state.alerts[id] ?? state.settings.defaultAlerts).length > 0);
   const openRelease = (entry: AppNotification) => navigate(`/release/${entry.item.slug}`);
 
   return (
     <main className="app-page notif-page">
       <StatusBar />
       <header className="simple-header notif-header">
-        <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={() => navigate(-1)}>
+        <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={goBack}>
           <ArrowLeft size={28} strokeWidth={1.8} />
         </button>
         <h1 className="notif-header__title">알림</h1>
@@ -121,7 +124,7 @@ export function NotificationsPage() {
       {!hasFavorites ? (
         <div className="empty-state notif-empty-state">
           <strong>담아 둔 기다림이 없어요</strong>
-          <p>담기를 눌러 두면 D-7·D-1·D-Day 에 여기서 알려드려요.</p>
+          <p>담기를 눌러 두면 설정한 시점(기본 D-1·D-Day)에 여기서 알려드려요.</p>
           <button className="primary-button" type="button" onClick={() => navigate("/discover")}>
             기다림 찾아보기
           </button>
@@ -166,7 +169,11 @@ export function NotificationsPage() {
                 ))}
               </ul>
             ) : (
-              <p className="notif-empty">예정된 알림이 없어요. 일정 상세에서 알림을 켤 수 있어요.</p>
+              <p className="notif-empty">
+                {hasAlertsOn
+                  ? "앞으로 울릴 알림이 없어요. 새 기다림을 담으면 설정한 시점에 여기에 쌓여요."
+                  : "예정된 알림이 없어요. 일정 상세에서 알림을 켤 수 있어요."}
+              </p>
             )}
           </section>
         </>

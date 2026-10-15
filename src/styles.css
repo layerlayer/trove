@@ -1065,8 +1065,17 @@ img {
 
 .not-found-page {
   display: flex;
+  flex-direction: column;
+}
+
+/* 상태 바는 위에 두고 안내만 남은 높이의 가운데에 */
+.not-found-page .empty-state {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  padding: 32px var(--page-gutter);
 }
 
 .not-found-page .primary-button {
@@ -2698,7 +2707,8 @@ img {
 /* ---------- 아티스트·브랜드 페이지로 가는 링크 ---------- */
 .release-card__eyebrow--link {
   max-width: 100%;
-  padding: 0;
+  margin: -8px 0 -2px;
+  padding: 8px 0;
   border: 0;
   background: none;
   color: var(--gray-30);
@@ -2739,4 +2749,39 @@ img {
   flex: 1;
   color: var(--gray-40);
   font-size: 12px;
+}
+
+/* 카드 제목 = 실제 "열기" 버튼. 글자 모양은 h3 를 그대로 물려받는다 */
+.release-card__open {
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: inherit;
+}
+
+.release-card__open:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.release-card--feed .release-card__copy h3 {
+  display: block;
+  overflow: visible;
+}
+
+.release-card--feed .release-card__open {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
 }

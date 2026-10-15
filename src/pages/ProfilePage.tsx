@@ -185,21 +185,21 @@ export function ProfilePage() {
         </button>
       </section>
 
-      {state.user ? (
-        <section className="settings-section profile-danger-zone">
-          <h2>계정</h2>
+      <section className="settings-section profile-danger-zone">
+        <h2>{state.user ? "계정" : "데이터"}</h2>
+        {state.user ? (
           <button className="settings-row" type="button" onClick={() => setSheet("logout")}>
             <span className="settings-row__icon"><LogOut size={20} /></span>
             <span className="settings-row__copy"><strong>로그아웃</strong><small>이 기기의 세션을 종료합니다.</small></span>
             <ChevronRight size={20} />
           </button>
-          <button className="settings-row is-danger" type="button" onClick={() => setSheet("reset")}>
-            <span className="settings-row__icon"><RotateCcw size={20} /></span>
-            <span className="settings-row__copy"><strong>MVP 데이터 초기화</strong><small>관심사와 저장 목록을 모두 지웁니다.</small></span>
-            <ChevronRight size={20} />
-          </button>
-        </section>
-      ) : null}
+        ) : null}
+        <button className="settings-row is-danger" type="button" onClick={() => setSheet("reset")}>
+          <span className="settings-row__icon"><RotateCcw size={20} /></span>
+          <span className="settings-row__copy"><strong>MVP 데이터 초기화</strong><small>관심사·담은 기다림·알림 설정·사용 기록을 이 기기에서 지웁니다.</small></span>
+          <ChevronRight size={20} />
+        </button>
+      </section>
 
       <BottomNav active="profile" />
 

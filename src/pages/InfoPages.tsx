@@ -1,10 +1,11 @@
 import "./InfoPages.css";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 import { type ReactNode, useEffect, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { StatusBar } from "../components/StatusBar";
 import { useReleases } from "../data/ReleaseDataContext";
 import { track } from "../lib/analytics";
+import { useBack } from "../lib/useBack";
 
 type InfoPageId = "about" | "terms" | "privacy";
 
@@ -42,12 +43,12 @@ interface InfoLayoutProps {
 
 /** 소개·약관·방침이 함께 쓰는 틀: 상태 바, 뒤로 가기, 제목, 초안 안내, 본문 */
 function InfoLayout({ title, eyebrow, draft = false, updatedAt, children }: InfoLayoutProps) {
-  const navigate = useNavigate();
+  const goBack = useBack("/home");
   return (
     <main className="app-page info-page">
       <StatusBar />
       <header className="simple-header info-header">
-        <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={() => navigate(-1)}>
+        <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={goBack}>
           <ArrowLeft size={28} strokeWidth={1.8} />
         </button>
       </header>
@@ -95,7 +96,7 @@ export function AboutPage() {
         <p className="info-lead">기다리는 즐거움을 가져다 주는 서비스, 내 취향의 묶음.</p>
         <p>
           앨범·공연 티켓오픈·게임·영화·라이프스타일 출시 일정을 한곳에 모아 기다림을 즐겁게 만들어 줘요.
-          마음에 드는 일정을 Trove에 담아 두면 D-7·D-1·D-Day에 알려 드려요.
+          마음에 드는 일정을 Trove에 담아 두면 알림 센터에서 D-7·D-1·D-Day 소식을 모아 볼 수 있어요. 기본은 D-1·D-Day이고, 시점은 프로필 &gt; 알림에서 바꿀 수 있어요. 브라우저 푸시 알림은 준비 중이에요.
         </p>
         <Link className="info-cta" to="/discover">일정 둘러보기</Link>
       </section>
@@ -103,7 +104,7 @@ export function AboutPage() {
       <section>
         <h2>어떻게 모으나요</h2>
         <ul>
-          <li>공식 출처에서 하루 한 번 일정을 모아요.</li>
+          <li>예매처 공지와 공개된 일정 데이터에서 하루 한 번 일정을 모아요. 어디서 모았는지는 아래 ‘출처’에서 볼 수 있어요.</li>
           <li>사람이 검수한 뒤에만 발행해요.</li>
           <li>날짜를 중심으로 보여 주고, 시각은 공연 티켓오픈처럼 꼭 필요한 경우에만 표시해요.</li>
           <li>미정이거나 달·분기 단위인 일정은 그대로 “2026년 11월”처럼 보여 줘요.</li>
@@ -133,7 +134,7 @@ export function AboutPage() {
         ) : (
           <p>아직 발행된 일정이 없어요.</p>
         )}
-        <p>모든 일정 상세에는 출처 링크가 있어요. 출처의 일정이 바뀌면 마지막 확인일을 함께 보여 줘요.</p>
+        <p>일정 상세에는 정보 출처와 마지막 확인일을 보여 줘요. 출처 링크가 있는 일정은 상세에서 바로 열 수 있어요.</p>
         {dataStamp ? <p className="info-stamp">데이터 기준 {dataStamp}</p> : null}
       </section>
 
@@ -171,7 +172,7 @@ export function TermsPage() {
         <h2>2. 서비스 내용</h2>
         <p>Trove는 앨범·공연 티켓오픈·게임·영화·라이프스타일의 출시 일정 정보를 모아 보여 주는 서비스예요.</p>
         <ul>
-          <li>정보는 공식 출처를 기준으로 하지만, 주최사·발매사 사정으로 바뀔 수 있어요. Trove가 정확성·완전성을 보증하지는 않아요.</li>
+          <li>정보는 각 출처(예매처 공지, 공개된 일정 데이터 등)를 기준으로 하지만, 주최사·발매사 사정으로 바뀔 수 있어요. Trove가 정확성·완전성을 보증하지는 않아요.</li>
           <li>예매·구매는 각 출처에서 이루어져요. Trove는 거래 당사자가 아니에요.</li>
           <li>알림은 참고용이에요. 기기나 브라우저 상태에 따라 울리지 않을 수도 있어요.</li>
         </ul>
@@ -243,7 +244,7 @@ export function PrivacyPage() {
           <li>관심사</li>
           <li>담은 기다림과 알림 설정</li>
           <li>로그인에 쓴 이메일 (데모)</li>
-          <li>앱 안 사용 기록 (어떤 화면을 봤는지)</li>
+          <li>앱 안 사용 기록 (본 화면, 검색어, 담기·알림 같은 행동, 로그인 방식, 잘못 연 주소)</li>
         </ul>
         <p>모두 브라우저 localStorage에만 저장되고, 서버로 보내지 않아요.</p>
       </section>
@@ -253,7 +254,7 @@ export function PrivacyPage() {
         <ul>
           <li>관심사로 취향 피드를 구성해요.</li>
           <li>담은 기다림과 알림 설정으로 알림 시점을 계산해요.</li>
-          <li>사용 기록으로 어떤 화면이 쓸모 있는지 보고 서비스를 개선해요.</li>
+          <li>사용 기록으로 어떤 화면과 기능이 쓸모 있는지 보고 서비스를 개선해요.</li>
         </ul>
       </section>
 

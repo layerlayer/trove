@@ -9,10 +9,11 @@ import { ReleaseListItem } from "../components/ReleaseListItem";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
 import { CATEGORY_LABELS, CATEGORY_ORDER } from "../data/categories";
-import { entityInterestId } from "../data/published";
+import { entityInterestId, slugify } from "../data/published";
 import { useReleases } from "../data/ReleaseDataContext";
 import { track } from "../lib/analytics";
 import { compareReleaseDate, isUpcoming } from "../lib/feed";
+import { useBack } from "../lib/useBack";
 import type { Category, ReleaseItem } from "../types";
 
 /** 지난 기다림은 처음에 이만큼만 보여 주고 "더 보기"로 펼친다 */
@@ -35,10 +36,13 @@ export function EntityPage() {
   const [pendingItem, setPendingItem] = useState<ReleaseItem | null>(null);
   const [shared, setShared] = useState(false);
 
-  const interestId = `entity:${slug ?? ""}`;
+  // 주소의 슬러그를 한 번 더 정규화해, 대소문자·NFD 같은 표기 차이로 못 찾는 일이 없게 한다
+  const canonical = slug ? slugify(slug) : "";
+  const interestId = `entity:${canonical}`;
+  const goBack = useBack("/home");
   const items = useMemo(
-    () => (slug ? releases.filter((item) => item.entityName && entityInterestId(item.entityName) === interestId) : []),
-    [interestId, releases, slug],
+    () => (canonical ? releases.filter((item) => item.entityName && entityInterestId(item.entityName) === interestId) : []),
+    [canonical, interestId, releases],
   );
   const upcoming = useMemo(() => items.filter(isUpcoming).sort(compareReleaseDate), [items]);
   const past = useMemo(() => items.filter((item) => !isUpcoming(item)).sort((a, b) => compareReleaseDate(b, a)), [items]);
@@ -56,11 +60,11 @@ export function EntityPage() {
       <main className="app-page entity-page entity-page--missing">
         <StatusBar />
         <header className="simple-header">
-          <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={() => navigate(-1)}><ArrowLeft size={28} strokeWidth={1.8} /></button>
+          <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={goBack}><ArrowLeft size={28} strokeWidth={1.8} /></button>
         </header>
         <div className="empty-state">
-          <strong>아직 모르는 아티스트예요</strong>
-          <p>발행된 일정이 있는 아티스트만 페이지가 생겨요.</p>
+          <strong>아직 모르는 아티스트·브랜드예요</strong>
+          <p>발행된 일정이 있는 아티스트·브랜드만 페이지가 생겨요.</p>
           <button className="primary-button" type="button" onClick={() => navigate("/discover")}>둘러보기</button>
         </div>
       </main>
@@ -68,6 +72,9 @@ export function EntityPage() {
   }
 
   const following = state.interests.includes(interestId);
+  const category = dominantCategory(items);
+  const isArtist = category === "music" || category === "concert";
+  const roleLabel = isArtist ? "아티스트" : "브랜드";
   const categoryLine = CATEGORY_ORDER.filter((category) => items.some((item) => item.category === category)).map((category) => CATEGORY_LABELS[category]).join(" · ");
   const tileInterest = { id: interestId, label: entityName, image: "", keywords: [] };
   const visiblePast = showAllPast ? past : past.slice(0, PAST_PREVIEW);
@@ -123,13 +130,13 @@ export function EntityPage() {
     <main className="app-page entity-page">
       <StatusBar />
       <header className="simple-header entity-header">
-        <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={() => navigate(-1)}><ArrowLeft size={28} strokeWidth={1.8} /></button>
+        <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={goBack}><ArrowLeft size={28} strokeWidth={1.8} /></button>
         <button className="icon-button" type="button" aria-label="공유하기" onClick={share}><Share2 size={26} strokeWidth={1.8} /></button>
       </header>
 
       <section className="entity-hero">
-        <span className="entity-hero__tile" data-category={dominantCategory(items)}><InterestImage interest={tileInterest} /></span>
-        <span className="eyebrow">ARTIST</span>
+        <span className="entity-hero__tile" data-category={category}><InterestImage interest={tileInterest} /></span>
+        <span className="eyebrow">{isArtist ? "ARTIST" : "BRAND"}</span>
         <h1>{entityName}</h1>
         {categoryLine ? <p className="entity-hero__categories">{categoryLine}</p> : null}
         <p className="entity-hero__stats">다가오는 {upcoming.length} · 지난 {past.length}</p>
@@ -139,7 +146,7 @@ export function EntityPage() {
         <button className={following ? "secondary-button" : "primary-button"} type="button" aria-pressed={following} onClick={follow}>
           {following ? <><Check size={18} strokeWidth={3} /> 팔로잉</> : "팔로우"}
         </button>
-        <p className="entity-follow__hint">{following ? "홈 피드에 이 아티스트의 일정이 섞여 나와요" : "팔로우하면 홈 피드에서 바로 만나요"}</p>
+        <p className="entity-follow__hint">{following ? `홈 피드에 이 ${roleLabel}의 일정이 섞여 나와요` : "팔로우하면 홈 피드에서 바로 만나요"}</p>
       </section>
 
       <section className="entity-section" aria-labelledby="entity-upcoming-heading">

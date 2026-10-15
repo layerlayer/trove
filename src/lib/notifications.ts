@@ -1,5 +1,5 @@
 import type { AlertPreset, ReleaseItem, TroveState } from "../types";
-import { daysUntil, parseLocalDate, toLocalIso } from "./date";
+import { parseLocalDate, toLocalIso } from "./date";
 
 /**
  * 알림 센터의 재료. 서버 푸시가 없는 MVP 라서, 담아 둔 일정과 알림 설정(D-7·D-1·D-Day)에서
@@ -22,7 +22,7 @@ export interface NotificationDigest {
   fired: AppNotification[];
   /** 앞으로 울릴 알림. 가까운 것이 먼저 */
   scheduled: AppNotification[];
-  /** 마지막으로 알림 센터를 본 뒤에 울린 알림 수 */
+  /** 알림 센터에서 아직 보지 않은, 울린 알림 수 */
   unreadCount: number;
 }
 
@@ -57,7 +57,7 @@ function copyFor(kind: NotificationKind, item: ReleaseItem): { title: string; bo
 
 export function buildNotifications(
   releases: ReleaseItem[],
-  state: Pick<TroveState, "favorites" | "alerts" | "settings" | "notificationsSeenAt">,
+  state: Pick<TroveState, "favorites" | "alerts" | "settings" | "notificationsSeenIds">,
   today: string = toLocalIso(new Date()),
 ): NotificationDigest {
   const oldest = shiftDate(today, -KEEP_DAYS);
@@ -69,6 +69,8 @@ export function buildNotifications(
     const item = byId.get(id);
     if (!item?.releaseAt) continue;
     const presets = presetsFor(item, state);
+    // 빈 배열 = 사용자가 알림을 껐다. 아무것도 만들지 않는다
+    if (presets.length === 0) continue;
     const kinds = (Object.keys(OFFSETS) as Array<keyof typeof OFFSETS>).filter((kind) => presets.includes(kind));
     for (const kind of kinds) {
       const at = shiftDate(item.releaseAt, OFFSETS[kind]);
@@ -80,7 +82,7 @@ export function buildNotifications(
       }
     }
     // D-Day 알림을 끈 채로 지나간 일정은 "나왔어요" 로 한 번만 알려 준다
-    if (!presets.includes("D-Day") && (daysUntil(item.releaseAt) ?? 0) < 0 && item.releaseAt >= oldest) {
+    if (!presets.includes("D-Day") && item.releaseAt < today && item.releaseAt >= oldest) {
       fired.push({ id: `${item.id}:released`, kind: "released", item, at: item.releaseAt, ...copyFor("released", item) });
     }
   }
@@ -88,8 +90,8 @@ export function buildNotifications(
   fired.sort((a, b) => (a.at === b.at ? a.item.title.localeCompare(b.item.title, "ko-KR") : b.at.localeCompare(a.at)));
   scheduled.sort((a, b) => (a.at === b.at ? a.item.title.localeCompare(b.item.title, "ko-KR") : a.at.localeCompare(b.at)));
 
-  const seenDay = state.notificationsSeenAt ? toLocalIso(new Date(state.notificationsSeenAt)) : null;
-  const unreadCount = seenDay ? fired.filter((entry) => entry.at > seenDay).length : fired.length;
+  const seen = new Set(state.notificationsSeenIds);
+  const unreadCount = fired.filter((entry) => !seen.has(entry.id)).length;
   return { fired, scheduled, unreadCount };
 }
 
