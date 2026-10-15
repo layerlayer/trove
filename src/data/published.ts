@@ -69,6 +69,27 @@ export function slugify(text: string): string {
   return slug || "unknown";
 }
 
+/** 콘솔이 영어로 내보낸 날짜 라벨을 우리말로. 모르는 값은 그대로 둔다 */
+const DATE_LABELS: Record<string, string> = {
+  "release date": "발매일",
+  release: "출시일",
+  "ticket open": "티켓오픈",
+  "ticket opening": "티켓오픈",
+  "on sale": "판매 시작",
+  premiere: "개봉일",
+  "release day": "출시일",
+  launch: "출시일",
+  "launch date": "출시일",
+  "street date": "발매일",
+  "air date": "방영일",
+  "opening date": "개봉일",
+};
+
+export function normalizeDateLabel(label: string | undefined): string {
+  if (!label) return "출시일";
+  return DATE_LABELS[label.toLowerCase()] ?? label;
+}
+
 export function categoryInterestId(category: Category): string {
   return `category:${category}`;
 }
@@ -177,7 +198,7 @@ export function adaptRelease(raw: PublishedRelease | null | undefined): ReleaseI
     releaseTime,
     releaseWindow,
     datePrecision: precision,
-    dateLabel: clean(raw.dateLabel) ?? "출시일",
+    dateLabel: normalizeDateLabel(clean(raw.dateLabel)),
     status,
     tags: uniqueStrings([contentKind, contentFormat ?? undefined, ...(raw.tags ?? [])].map(clean)),
     interestIds: [categoryInterestId(category), ...(entityName ? [entityInterestId(entityName)] : [])],

@@ -73,6 +73,7 @@ export function PreferencesPage() {
                   type="button"
                   key={interest.id}
                   aria-pressed={selected}
+                  aria-label={interest.label}
                   onClick={() => toggleInterest(interest.id)}
                 >
                   <span className="interest-tile__image-wrap">

@@ -31,6 +31,8 @@ export interface FeedResult {
 const FIRST_ROW_AFTER = 3;
 const ROW_EVERY = 5;
 const ROW_SIZE = 8;
+/** "방금 나온 기다림" 으로 치는 기간(일) */
+const RECENT_DAYS = 14;
 
 /** 날짜 → (공연 티켓오픈) 시각 → 제목 순. 날짜 미정은 맨 뒤 */
 export function compareReleaseDate(a: ReleaseItem, b: ReleaseItem): number {
@@ -63,8 +65,18 @@ export function buildFeed({ releases, interests, category }: FeedInput): FeedRes
   const feedItems = personalized ? mine : [...scoped].sort(compareReleaseDate);
   const feedIds = new Set(feedItems.map((item) => item.id));
 
-  // 추천 풀: 피드에 없는 다가오는 일정. 카테고리 필터 밖의 일정도 "이런 건 어때요" 로 보여 준다.
-  const pool = upcoming.filter((item) => !feedIds.has(item.id)).sort(compareReleaseDate);
+  // 추천 풀: 피드에 없는 다가오는 일정. 카테고리 탭에서는 그 카테고리 안에서만 고르고,
+  // 탭이 비어 있을 때만 다른 카테고리에서 "대신 이런 건 어때요" 를 보여 준다.
+  const tabEmpty = category !== "all" && scoped.length === 0;
+  const pool = (tabEmpty ? upcoming : scoped).filter((item) => !feedIds.has(item.id)).sort(compareReleaseDate);
+  // 최근 2주 안에 나온 것들. 관심사를 모두 팔로우해 추천할 게 없을 때도 이 줄은 남는다.
+  const justReleased = (category === "all" ? releases : releases.filter((item) => item.category === category))
+    .filter((item) => {
+      if (isUpcoming(item)) return false;
+      const days = daysUntil(item.releaseAt);
+      return days !== null && days < 0 && days >= -RECENT_DAYS;
+    })
+    .sort((a, b) => compareReleaseDate(b, a));
   const used = new Set<string>();
   const take = (items: ReleaseItem[], limit: number): ReleaseItem[] => {
     const out: ReleaseItem[] = [];
@@ -82,25 +94,30 @@ export function buildFeed({ releases, interests, category }: FeedInput): FeedRes
     rows.push({ type: "row", key, eyebrow, title, items });
   };
 
-  pushRow(
-    "row-week",
-    "THIS WEEK",
-    "이번 주 출시",
-    take(
-      pool.filter((item) => {
-        const days = daysUntil(item.releaseAt);
-        return days !== null && days >= 0 && days <= 7;
-      }),
-      ROW_SIZE,
-    ),
-  );
-  pushRow("row-more", "YOU MAY LIKE", "이런 기다림도 좋아하실 것 같아요", take(pool, ROW_SIZE));
-  const byEntity = new Map<string, ReleaseItem>();
-  for (const item of pool) {
-    if (!item.entityName || matchesInterests(item, interests) || byEntity.has(item.entityName)) continue;
-    byEntity.set(item.entityName, item);
+  if (tabEmpty) {
+    pushRow("row-instead", "YOU MAY LIKE", "대신 이런 기다림은 어때요", take(pool, ROW_SIZE));
+  } else {
+    pushRow(
+      "row-week",
+      "THIS WEEK",
+      "이번 주 출시",
+      take(
+        pool.filter((item) => {
+          const days = daysUntil(item.releaseAt);
+          return days !== null && days >= 0 && days <= 7;
+        }),
+        ROW_SIZE,
+      ),
+    );
+    pushRow("row-more", "YOU MAY LIKE", "이런 기다림도 좋아하실 것 같아요", take(pool, ROW_SIZE));
+    const byEntity = new Map<string, ReleaseItem>();
+    for (const item of pool) {
+      if (!item.entityName || matchesInterests(item, interests) || byEntity.has(item.entityName)) continue;
+      byEntity.set(item.entityName, item);
+    }
+    pushRow("row-artists", "NEW FOR YOU", "이런 아티스트도 기다려 보세요", take([...byEntity.values()], ROW_SIZE));
   }
-  pushRow("row-artists", "NEW FOR YOU", "이런 아티스트도 기다려 보세요", take([...byEntity.values()], ROW_SIZE));
+  pushRow("row-released", "JUST OUT", "방금 나온 기다림", take(justReleased, ROW_SIZE));
 
   const blocks: FeedBlock[] = [];
   if (!personalized) {

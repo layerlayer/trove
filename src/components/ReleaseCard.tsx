@@ -19,8 +19,10 @@ export function ReleaseCard({
   onOpen,
   onFavorite,
 }: ReleaseCardProps) {
+  // 작은 카드에는 시각까지 넣으면 줄이 넘어가서 날짜만 보여 준다
+  const showTime = variant !== "compact" && Boolean(item.releaseTime);
   const dateText = item.releaseAt
-    ? `${formatDate(item.releaseAt)}${item.releaseTime ? ` ${item.releaseTime}` : ""}`
+    ? `${formatDate(item.releaseAt)}${showTime ? ` ${item.releaseTime}` : ""}`
     : item.releaseWindow ?? "출시일 미정";
   // "기타" 같은 빈 분류는 숨긴다
   const kind = item.contentKind && item.contentKind !== "기타" ? item.contentKind : undefined;

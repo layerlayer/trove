@@ -580,7 +580,9 @@ img {
 }
 
 .release-card__copy p span {
+  flex: 0 0 auto;
   color: var(--gray-30);
+  white-space: nowrap;
 }
 
 .release-card--compact .release-card__top {
