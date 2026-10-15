@@ -21,7 +21,8 @@ npm run build
 앱은 목업 데이터를 쓰지 않고, 운영 콘솔(`trove-ops`)이 **승인된 일정만** 모아 발행한 `releases.json` 을 읽습니다.
 
 - 앱이 시작할 때 같은 사이트의 `/releases.json`(과 `/releases.meta.json`)을 한 번 내려받아 모든 화면이 공유합니다.
-- 콘솔이 발행한 파일을 앱으로 가져오려면:
+- 개발 서버(`npm run dev`)는 `trove-ops/data`(또는 `TROVE_OPS_DATA_DIR`)의 발행물을 바로 읽습니다. 콘솔에서 발행한 뒤 브라우저를 새로고침하면 됩니다.
+- 배포용 빌드와 커밋에는 아래처럼 `public/` 로 복사한 사본이 필요합니다.
 
 ```bash
 npm run data:pull            # ./trove-ops/data → public/
