@@ -6,3 +6,6 @@ dist
 .env
 .env.*
 !.env.example
+
+# 운영 콘솔(trove-ops)은 이 폴더 안에 두되 별도 저장소로 관리한다
+/trove-ops/

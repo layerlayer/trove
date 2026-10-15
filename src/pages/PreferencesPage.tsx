@@ -2,14 +2,17 @@ import { ArrowLeft, Check, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { StatusBar } from "../components/StatusBar";
-import { interests } from "../data/mock";
+import { InterestImage } from "../components/Media";
+import { useReleases } from "../data/ReleaseDataContext";
 import { useTrove } from "../context/TroveContext";
 
 export function PreferencesPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { state, toggleInterest, completeOnboarding } = useTrove();
+  const { interests } = useReleases();
   const [query, setQuery] = useState("");
+  const selectedCount = state.interests.filter((id) => interests.some((interest) => interest.id === id)).length;
 
   const filteredInterests = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("ko-KR");
@@ -20,10 +23,10 @@ export function PreferencesPage() {
         .toLocaleLowerCase("ko-KR")
         .includes(normalized),
     );
-  }, [query]);
+  }, [interests, query]);
 
   const finish = () => {
-    if (state.interests.length === 0) return;
+    if (selectedCount === 0) return;
     completeOnboarding();
     const returnTo = (location.state as { returnTo?: string } | null)?.returnTo ?? "/home";
     navigate(returnTo, { replace: true });
@@ -73,7 +76,7 @@ export function PreferencesPage() {
                   onClick={() => toggleInterest(interest.id)}
                 >
                   <span className="interest-tile__image-wrap">
-                    <img src={interest.image} alt="" />
+                    <InterestImage interest={interest} />
                     {selected ? (
                       <span className="interest-tile__check" aria-hidden="true">
                         <Check size={20} strokeWidth={3} />
@@ -98,10 +101,10 @@ export function PreferencesPage() {
         <button
           className="primary-button"
           type="button"
-          disabled={state.interests.length === 0}
+          disabled={selectedCount === 0}
           onClick={finish}
         >
-          <strong>{state.interests.length}개</strong> 선택 완료
+          <strong>{selectedCount}개</strong> 선택 완료
         </button>
       </footer>
     </main>

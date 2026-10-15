@@ -9,7 +9,8 @@ import { NotificationList } from "../components/NotificationList";
 import { ReleaseListItem } from "../components/ReleaseListItem";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
-import { categories, releases } from "../data/mock";
+import { categories } from "../data/categories";
+import { useReleases } from "../data/ReleaseDataContext";
 import { daysUntil } from "../lib/date";
 import { track } from "../lib/analytics";
 import type { Category, ReleaseItem } from "../types";
@@ -28,7 +29,7 @@ const periodLabels: Record<Period, string> = {
 const sortLabels: Record<Sort, string> = {
   release: "출시일순",
   popular: "인기순",
-  new: "새로 추가됨",
+  new: "최근 확인순",
 };
 
 function matchesPeriod(item: ReleaseItem, period: Period) {
@@ -42,6 +43,7 @@ function matchesPeriod(item: ReleaseItem, period: Period) {
 export function DiscoverPage() {
   const navigate = useNavigate();
   const { state, toggleFavorite, markNotificationsRead } = useTrove();
+  const { releases } = useReleases();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"all" | Category>("all");
   const [period, setPeriod] = useState<Period>("all");
@@ -68,12 +70,12 @@ export function DiscoverPage() {
 
     return filtered.sort((a, b) => {
       if (sort === "popular") return (b.waitingCount ?? 0) - (a.waitingCount ?? 0);
-      if (sort === "new") return b.id.localeCompare(a.id);
+      if (sort === "new") return (b.lastVerifiedAt ?? "").localeCompare(a.lastVerifiedAt ?? "") || b.id.localeCompare(a.id);
       if (!a.releaseAt) return 1;
       if (!b.releaseAt) return -1;
       return a.releaseAt.localeCompare(b.releaseAt);
     });
-  }, [category, period, query, sort]);
+  }, [category, period, query, releases, sort]);
 
   const save = (item: ReleaseItem) => {
     if (!state.user) {

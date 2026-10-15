@@ -2387,3 +2387,153 @@ img {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------- 발행물 로딩 화면 ---------- */
+.data-screen {
+  display: flex;
+  min-height: 100dvh;
+  flex-direction: column;
+}
+
+.data-screen__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 var(--page-gutter) 96px;
+  color: var(--gray-30);
+  text-align: center;
+}
+
+.data-screen__body strong {
+  font-size: 18px;
+  color: var(--white);
+}
+
+.data-screen__body p {
+  max-width: 280px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.data-screen__body small {
+  max-width: 300px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--gray-50);
+  overflow-wrap: anywhere;
+}
+
+.data-screen__body .primary-button {
+  width: auto;
+  min-width: 160px;
+  margin-top: 14px;
+}
+
+/* ---------- 이미지 없는 카드: 글자 타일 ---------- */
+.media-placeholder {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 18% 0%, var(--tile-tint, rgba(205, 255, 25, 0.22)), transparent 62%),
+    var(--surface-raised);
+  color: var(--gray-10);
+  user-select: none;
+}
+
+.media-placeholder[data-category="music"] { --tile-tint: rgba(205, 255, 25, 0.26); }
+.media-placeholder[data-category="concert"] { --tile-tint: rgba(255, 122, 89, 0.3); }
+.media-placeholder[data-category="game"] { --tile-tint: rgba(37, 110, 244, 0.34); }
+.media-placeholder[data-category="movie"] { --tile-tint: rgba(214, 61, 74, 0.3); }
+.media-placeholder[data-category="lifestyle"] { --tile-tint: rgba(177, 184, 190, 0.26); }
+
+.media-placeholder--round {
+  border-radius: 999px;
+}
+
+.media-placeholder__glyph {
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.media-placeholder__label {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--gray-30);
+}
+
+/* 홈 카드: 배경 전체를 채우고 글자는 은은하게 */
+.release-card .media-placeholder {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+}
+
+.release-card .media-placeholder__glyph {
+  color: rgba(255, 255, 255, 0.16);
+}
+
+.release-card--hero .media-placeholder__glyph {
+  font-size: 148px;
+}
+
+.release-card--compact .media-placeholder__glyph {
+  font-size: 72px;
+}
+
+.release-card--hero .media-placeholder__label {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* 목록·캘린더·관심사 타일: 작은 정사각형 */
+.release-list-item__image-wrap .media-placeholder__glyph {
+  font-size: 34px;
+}
+
+.calendar-event > .media-placeholder {
+  width: 80px;
+  height: 80px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.calendar-event > .media-placeholder .media-placeholder__glyph {
+  font-size: 30px;
+}
+
+.interest-tile__image-wrap .media-placeholder {
+  border-radius: inherit;
+}
+
+.interest-tile__image-wrap .media-placeholder__glyph {
+  font-size: 36px;
+}
+
+/* 상세 상단: 이미지 대신 큰 글자와 종류 */
+.detail-gallery--empty > .media-placeholder {
+  width: 100%;
+  height: 100%;
+}
+
+.detail-gallery--empty .media-placeholder__glyph {
+  font-size: 168px;
+  color: rgba(255, 255, 255, 0.18);
+}
+
+.detail-gallery--empty .media-placeholder__label {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.6);
+}

@@ -9,7 +9,8 @@ import { NotificationList } from "../components/NotificationList";
 import { ReleaseCard } from "../components/ReleaseCard";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
-import { categories, releases } from "../data/mock";
+import { categories } from "../data/categories";
+import { useReleases } from "../data/ReleaseDataContext";
 import { daysUntil } from "../lib/date";
 import { track } from "../lib/analytics";
 import type { Category, ReleaseItem } from "../types";
@@ -25,6 +26,7 @@ const compareReleaseDate = (a: ReleaseItem, b: ReleaseItem) => {
 export function HomePage() {
   const navigate = useNavigate();
   const { state, toggleFavorite, markNotificationsRead } = useTrove();
+  const { releases } = useReleases();
   const [activeCategory, setActiveCategory] = useState<"all" | Category>("all");
   const [sheet, setSheet] = useState<HomeSheet>(null);
   const [authOpen, setAuthOpen] = useState(false);
@@ -43,14 +45,14 @@ export function HomePage() {
       const bMatch = b.interestIds.some((id) => state.interests.includes(id)) ? 1 : 0;
       return bMatch - aMatch || compareReleaseDate(a, b);
     });
-  }, [activeCategory, state.interests]);
+  }, [activeCategory, releases, state.interests]);
 
   const nextSaved = useMemo(
     () =>
       releases
         .filter((item) => state.favorites.includes(item.id) && (daysUntil(item.releaseAt) ?? -1) >= 0)
         .sort(compareReleaseDate)[0],
-    [state.favorites],
+    [releases, state.favorites],
   );
   const hero = activeCategory === "all" && nextSaved ? nextSaved : visibleReleases[0];
   const thisWeek = visibleReleases.filter((item) => {
@@ -134,7 +136,9 @@ export function HomePage() {
           <Sparkles size={21} />
         </div>
 
-        {hero ? card(hero, "hero") : (
+        {hero ? card(hero, "hero") : activeCategory === "all" ? (
+          <div className="empty-state home-empty"><strong>아직 발행된 출시 일정이 없어요</strong><p>운영 콘솔에서 일정이 발행되면 여기에 보여요.</p></div>
+        ) : (
           <div className="empty-state home-empty"><strong>이 카테고리의 출시작을 준비 중이에요</strong><p>전체 탭에서 다른 기다림을 둘러보세요.</p></div>
         )}
 

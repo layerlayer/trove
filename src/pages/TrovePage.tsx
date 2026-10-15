@@ -9,7 +9,7 @@ import { NotificationList } from "../components/NotificationList";
 import { ReleaseListItem } from "../components/ReleaseListItem";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
-import { releases } from "../data/mock";
+import { useReleases } from "../data/ReleaseDataContext";
 import { daysUntil } from "../lib/date";
 import { track } from "../lib/analytics";
 import type { AlertPreset, ReleaseItem } from "../types";
@@ -87,6 +87,7 @@ function groupTroveItems(items: ReleaseItem[]): TroveGroup[] {
 export function TrovePage() {
   const navigate = useNavigate();
   const { state, toggleFavorite, setAlertPresets, markNotificationsRead } = useTrove();
+  const { releases } = useReleases();
   const [sheet, setSheet] = useState<TroveSheet>(null);
   const [selectedItem, setSelectedItem] = useState<ReleaseItem | null>(null);
   const [draftAlerts, setDraftAlerts] = useState<AlertPreset[]>([]);
@@ -94,10 +95,10 @@ export function TrovePage() {
 
   const savedItems = useMemo(
     () => releases.filter((item) => state.favorites.includes(item.id)),
-    [state.favorites],
+    [releases, state.favorites],
   );
   const groups = useMemo(() => groupTroveItems(savedItems), [savedItems]);
-  const activeAlertCount = Object.values(state.alerts).filter((presets) => presets.length > 0).length;
+  const activeAlertCount = savedItems.filter((item) => (state.alerts[item.id] ?? []).length > 0).length;
 
   const openAlerts = (item: ReleaseItem) => {
     setSelectedItem(item);

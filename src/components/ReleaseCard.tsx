@@ -2,6 +2,7 @@ import { Heart } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import type { ReleaseItem } from "../types";
 import { dDayLabel, formatDate } from "../lib/date";
+import { ReleaseThumb } from "./Media";
 
 interface ReleaseCardProps {
   item: ReleaseItem;
@@ -34,7 +35,7 @@ export function ReleaseCard({
       onClick={onOpen}
       onKeyDown={handleKey}
     >
-      <img src={item.thumbnail} alt="" className="release-card__image" />
+      <ReleaseThumb item={item} className="release-card__image" showLabel={variant === "hero"} />
       <div className="release-card__shade" />
       <div className="release-card__top">
         <span className="d-day-pill">{dDayLabel(item.releaseAt)}</span>

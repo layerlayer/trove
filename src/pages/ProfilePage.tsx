@@ -18,7 +18,7 @@ import { BottomSheet } from "../components/BottomSheet";
 import { NotificationList } from "../components/NotificationList";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
-import { interests } from "../data/mock";
+import { useReleases } from "../data/ReleaseDataContext";
 import { track } from "../lib/analytics";
 import type { AlertPreset } from "../types";
 
@@ -41,11 +41,13 @@ export function ProfilePage() {
     markNotificationsRead,
     resetDemo,
   } = useTrove();
+  const { interests, releases } = useReleases();
   const [sheet, setSheet] = useState<ProfileSheet>(null);
   const [authOpen, setAuthOpen] = useState(false);
 
   const selectedInterests = interests.filter((interest) => state.interests.includes(interest.id));
-  const reminderCount = Object.values(state.alerts).filter((alerts) => alerts.length > 0).length;
+  const savedCount = releases.filter((item) => state.favorites.includes(item.id)).length;
+  const reminderCount = releases.filter((item) => (state.alerts[item.id] ?? []).length > 0).length;
 
   const requestNotifications = async () => {
     if (!("Notification" in window)) {
@@ -101,7 +103,7 @@ export function ProfilePage() {
           </section>
 
           <section className="profile-stats">
-            <div><strong>{state.favorites.length}</strong><span>기다림</span></div>
+            <div><strong>{savedCount}</strong><span>기다림</span></div>
             <div><strong>{reminderCount}</strong><span>알림</span></div>
             <div><strong>{selectedInterests.length}</strong><span>관심사</span></div>
           </section>

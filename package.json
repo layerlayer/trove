@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "node scripts/check-releases.mjs",
     "build": "tsc --noEmit && vite build",
     "check": "tsc --noEmit --pretty false",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "data:pull": "node scripts/pull-releases.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

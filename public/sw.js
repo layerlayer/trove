@@ -17,7 +17,15 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
-  event.respondWith(fetch(event.request).catch(() => caches.match(event.request).then((cached) => cached ?? caches.match("/"))));
+  event.respondWith(
+    fetch(event.request).catch(async () => {
+      const cached = await caches.match(event.request);
+      if (cached) return cached;
+      // 페이지 이동만 앱 셸로 대체한다. 데이터·에셋 요청까지 index.html 로 바꾸면 앱이 HTML 을 JSON 으로 읽게 된다.
+      if (event.request.mode === "navigate") return caches.match("/");
+      return Response.error();
+    }),
+  );
 });
 
 self.addEventListener("push", (event) => {
