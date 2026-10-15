@@ -1,1 +1,562 @@
-[]
+[
+  {
+    "id": "kpopping:2026-dont-stop:album_release:발매일",
+    "slug": "kpopping-2026-dont-stop-album-release",
+    "title": "TEEN TOP Dont Stop",
+    "category": "music",
+    "categoryLabel": "음악",
+    "releaseAt": "2026-10-15",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "발매일",
+    "status": "released",
+    "tags": [
+      "앨범",
+      "kpopping"
+    ],
+    "contentFormat": "미니 앨범",
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "출처",
+        "value": "kpopping"
+      }
+    ],
+    "sourceName": "kpopping",
+    "sourceUrl": "https://kpopping.com/musicalbum/2026-dont-stop",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "endsAt": null,
+    "scheduleType": "album_release",
+    "entityName": "TEEN TOP",
+    "opsFlags": []
+  },
+  {
+    "id": "kpopping:2026-in-yeonhui-dong:album_release:발매일",
+    "slug": "kpopping-2026-in-yeonhui-dong-album-release",
+    "title": "Zion. T In Yeonhui-dong",
+    "category": "music",
+    "categoryLabel": "음악",
+    "releaseAt": "2026-10-15",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "발매일",
+    "status": "released",
+    "tags": [
+      "앨범",
+      "kpopping"
+    ],
+    "contentFormat": "싱글",
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "출처",
+        "value": "kpopping"
+      }
+    ],
+    "sourceName": "kpopping",
+    "sourceUrl": "https://kpopping.com/musicalbum/2026-in-yeonhui-dong",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "endsAt": null,
+    "scheduleType": "album_release",
+    "entityName": "Zion. T",
+    "opsFlags": []
+  },
+  {
+    "id": "kpopping:2026-lost-found:album_release:발매일",
+    "slug": "kpopping-2026-lost-found-album-release",
+    "title": "Hyojung Lost & Found",
+    "category": "music",
+    "categoryLabel": "음악",
+    "releaseAt": "2026-10-15",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "발매일",
+    "status": "released",
+    "tags": [
+      "앨범",
+      "kpopping"
+    ],
+    "contentFormat": "미니 앨범",
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "출처",
+        "value": "kpopping"
+      }
+    ],
+    "sourceName": "kpopping",
+    "sourceUrl": "https://kpopping.com/musicalbum/2026-lost-found",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "endsAt": null,
+    "scheduleType": "album_release",
+    "entityName": "Hyojung",
+    "opsFlags": []
+  },
+  {
+    "id": "kpopping:2026-star-trace-afro-remix-by-imlay:album_release:발매일",
+    "slug": "kpopping-2026-star-trace-afro-remix-by-imlay-album-release",
+    "title": "PLAVE Star Trace (Afro Remix by IMLAY)",
+    "category": "music",
+    "categoryLabel": "음악",
+    "releaseAt": "2026-10-15",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "발매일",
+    "status": "released",
+    "tags": [
+      "앨범",
+      "kpopping"
+    ],
+    "contentFormat": "싱글",
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "출처",
+        "value": "kpopping"
+      }
+    ],
+    "sourceName": "kpopping",
+    "sourceUrl": "https://kpopping.com/musicalbum/2026-star-trace-afro-remix-by-imlay",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "endsAt": null,
+    "scheduleType": "album_release",
+    "entityName": "PLAVE",
+    "opsFlags": [
+      "changed_after_approval"
+    ]
+  },
+  {
+    "id": "kpopping:2026-tata-feat-minami-of-rescene:album_release:발매일",
+    "slug": "kpopping-2026-tata-feat-minami-of-rescene-album-release",
+    "title": "Loco TATA (feat. Minami of RESCENE)",
+    "category": "music",
+    "categoryLabel": "음악",
+    "releaseAt": "2026-10-15",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "발매일",
+    "status": "released",
+    "tags": [
+      "앨범",
+      "kpopping"
+    ],
+    "contentFormat": "싱글",
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "출처",
+        "value": "kpopping"
+      }
+    ],
+    "sourceName": "kpopping",
+    "sourceUrl": "https://kpopping.com/musicalbum/2026-tata-feat-minami-of-rescene",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "endsAt": null,
+    "scheduleType": "album_release",
+    "entityName": "Loco",
+    "opsFlags": []
+  },
+  {
+    "id": "kpopping:2026-next-chapter:album_release:발매일",
+    "slug": "kpopping-2026-next-chapter-album-release",
+    "title": "Hearts2Hearts Next Chapter",
+    "category": "music",
+    "categoryLabel": "음악",
+    "releaseAt": "2026-10-16",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "발매일",
+    "status": "confirmed",
+    "tags": [
+      "앨범",
+      "kpopping"
+    ],
+    "contentFormat": "싱글",
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "출처",
+        "value": "kpopping"
+      }
+    ],
+    "sourceName": "kpopping",
+    "sourceUrl": "https://kpopping.com/musicalbum/2026-next-chapter",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "endsAt": null,
+    "scheduleType": "album_release",
+    "entityName": "Hearts2Hearts",
+    "opsFlags": []
+  },
+  {
+    "id": "ticketlink:66211:ticket_open:티켓오픈",
+    "slug": "ticketlink-66211-ticket-open",
+    "title": "2026 소통왕 말자쑈! - 창원 티켓오픈 안내",
+    "category": "concert",
+    "categoryLabel": "공연",
+    "releaseAt": "2026-10-16T11:00:00+09:00",
+    "releaseWindow": null,
+    "datePrecision": "exact_time",
+    "dateLabel": "티켓오픈",
+    "status": "confirmed",
+    "tags": [
+      "기타",
+      "티켓링크"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "공연장",
+        "value": "창원 MBC홀"
+      },
+      {
+        "label": "출처",
+        "value": "티켓링크"
+      }
+    ],
+    "sourceName": "티켓링크",
+    "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66211",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
+    "endsAt": null,
+    "scheduleType": "ticket_open",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
+    "id": "ticketlink:66220:ticket_open:티켓오픈",
+    "slug": "ticketlink-66220-ticket-open",
+    "title": "[단독판매] 정동하 x 알리 < SONG : THE BATTLE OF LEGENDS > - 순천 티켓오픈 안내",
+    "category": "concert",
+    "categoryLabel": "공연",
+    "releaseAt": "2026-10-16T14:00:00+09:00",
+    "releaseWindow": null,
+    "datePrecision": "exact_time",
+    "dateLabel": "티켓오픈",
+    "status": "confirmed",
+    "tags": [
+      "기타",
+      "티켓링크"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "공연장",
+        "value": "순천문화예술회관 대극장"
+      },
+      {
+        "label": "출처",
+        "value": "티켓링크"
+      }
+    ],
+    "sourceName": "티켓링크",
+    "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66220",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
+    "endsAt": null,
+    "scheduleType": "ticket_open",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
+    "id": "ticketlink:66227:ticket_open:티켓오픈",
+    "slug": "ticketlink-66227-ticket-open",
+    "title": "공감 U-HEE - 대구 티켓오픈 안내",
+    "category": "concert",
+    "categoryLabel": "공연",
+    "releaseAt": "2026-10-16T18:00:00+09:00",
+    "releaseWindow": null,
+    "datePrecision": "exact_time",
+    "dateLabel": "티켓오픈",
+    "status": "confirmed",
+    "tags": [
+      "기타",
+      "티켓링크"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "공연장",
+        "value": "대구문화예술회관 비슬홀"
+      },
+      {
+        "label": "출처",
+        "value": "티켓링크"
+      }
+    ],
+    "sourceName": "티켓링크",
+    "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66227",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
+    "endsAt": null,
+    "scheduleType": "ticket_open",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
+    "id": "ticketlink:66203:ticket_open:티켓오픈",
+    "slug": "ticketlink-66203-ticket-open",
+    "title": "[단독판매] 2026 하현상 콘서트 < Funny Family > 추가 회차 티켓오픈 안내",
+    "category": "concert",
+    "categoryLabel": "공연",
+    "releaseAt": "2026-10-16T19:00:00+09:00",
+    "releaseWindow": null,
+    "datePrecision": "exact_time",
+    "dateLabel": "티켓오픈",
+    "status": "confirmed",
+    "tags": [
+      "콘서트",
+      "티켓링크"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "공연장",
+        "value": "경희대학교 평화의 전당"
+      },
+      {
+        "label": "출처",
+        "value": "티켓링크"
+      }
+    ],
+    "sourceName": "티켓링크",
+    "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66203",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
+    "endsAt": null,
+    "scheduleType": "ticket_open",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
+    "id": "kpopping:2026-all-of-my-life:album_release:발매일",
+    "slug": "kpopping-2026-all-of-my-life-album-release",
+    "title": "Max Changmin All Of My Life",
+    "category": "music",
+    "categoryLabel": "음악",
+    "releaseAt": "2026-10-19",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "발매일",
+    "status": "confirmed",
+    "tags": [
+      "앨범",
+      "kpopping"
+    ],
+    "contentFormat": "미니 앨범",
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "출처",
+        "value": "kpopping"
+      }
+    ],
+    "sourceName": "kpopping",
+    "sourceUrl": "https://kpopping.com/musicalbum/2026-all-of-my-life",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "endsAt": null,
+    "scheduleType": "album_release",
+    "entityName": "Max Changmin",
+    "opsFlags": []
+  },
+  {
+    "id": "kpopping:2026-on-our-noise:album_release:발매일",
+    "slug": "kpopping-2026-on-our-noise-album-release",
+    "title": "EVNNE on: our noise",
+    "category": "music",
+    "categoryLabel": "음악",
+    "releaseAt": "2026-10-19",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "발매일",
+    "status": "confirmed",
+    "tags": [
+      "앨범",
+      "kpopping"
+    ],
+    "contentFormat": "미니 앨범",
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "출처",
+        "value": "kpopping"
+      }
+    ],
+    "sourceName": "kpopping",
+    "sourceUrl": "https://kpopping.com/musicalbum/2026-on-our-noise",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "endsAt": null,
+    "scheduleType": "album_release",
+    "entityName": "EVNNE",
+    "opsFlags": []
+  },
+  {
+    "id": "kpopping:2026-strange-muse:album_release:발매일",
+    "slug": "kpopping-2026-strange-muse-album-release",
+    "title": "NMIXX Strange Muse",
+    "category": "music",
+    "categoryLabel": "음악",
+    "releaseAt": "2026-10-19",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "발매일",
+    "status": "confirmed",
+    "tags": [
+      "앨범",
+      "kpopping"
+    ],
+    "contentFormat": "EP",
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "출처",
+        "value": "kpopping"
+      }
+    ],
+    "sourceName": "kpopping",
+    "sourceUrl": "https://kpopping.com/musicalbum/2026-strange-muse",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "endsAt": null,
+    "scheduleType": "album_release",
+    "entityName": "NMIXX",
+    "opsFlags": []
+  },
+  {
+    "id": "ticketlink:66201:ticket_open:티켓오픈",
+    "slug": "ticketlink-66201-ticket-open",
+    "title": "[단독판매] <슈퍼 루나틱> - 울진 티켓오픈 안내",
+    "category": "concert",
+    "categoryLabel": "공연",
+    "releaseAt": "2026-11-03T10:00:00+09:00",
+    "releaseWindow": null,
+    "datePrecision": "exact_time",
+    "dateLabel": "티켓오픈",
+    "status": "confirmed",
+    "tags": [
+      "기타",
+      "티켓링크"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "공연장",
+        "value": "울진문화예술회관"
+      },
+      {
+        "label": "출처",
+        "value": "티켓링크"
+      }
+    ],
+    "sourceName": "티켓링크",
+    "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66201",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
+    "endsAt": null,
+    "scheduleType": "ticket_open",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
+    "id": "wikipedia:2026-11-perfect-storm-tomorrow-x-together:album_release:release-date",
+    "slug": "wikipedia-2026-11-perfect-storm-tomorrow-x-together-album-release-release-date",
+    "title": "Tomorrow X Together Perfect Storm",
+    "category": "music",
+    "categoryLabel": "음악",
+    "releaseAt": "2026-11-16",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "Release date",
+    "status": "confirmed",
+    "tags": [
+      "앨범",
+      "Wikipedia (CC BY-SA 4.0)"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "출처",
+        "value": "Wikipedia (CC BY-SA 4.0)"
+      }
+    ],
+    "sourceName": "Wikipedia (CC BY-SA 4.0)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/2026_in_South_Korean_music#November",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
+    "endsAt": null,
+    "scheduleType": "album_release",
+    "entityName": "Tomorrow X Together",
+    "opsFlags": []
+  },
+  {
+    "id": "kpopping:2026-cute-anxiety:album_release:발매일",
+    "slug": "kpopping-2026-cute-anxiety-album-release",
+    "title": "Mujin Cute & Anxiety",
+    "category": "music",
+    "categoryLabel": "음악",
+    "releaseAt": "2026-11-20",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "발매일",
+    "status": "confirmed",
+    "tags": [
+      "앨범",
+      "kpopping"
+    ],
+    "contentFormat": "EP",
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "출처",
+        "value": "kpopping"
+      }
+    ],
+    "sourceName": "kpopping",
+    "sourceUrl": "https://kpopping.com/musicalbum/2026-cute-anxiety",
+    "description": "",
+    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "endsAt": null,
+    "scheduleType": "album_release",
+    "entityName": "Mujin",
+    "opsFlags": []
+  }
+]

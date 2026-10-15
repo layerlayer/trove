@@ -1,9 +1,15 @@
 {
-  "publishedAt": null,
-  "count": 0,
-  "byCategory": {},
-  "byStatus": {},
-  "held": 0,
+  "publishedAt": "2026-10-15T15:17:28.580Z",
+  "count": 16,
+  "byCategory": {
+    "music": 11,
+    "concert": 5
+  },
+  "byStatus": {
+    "released": 5,
+    "confirmed": 11
+  },
+  "held": 1,
   "skippedPast": 0,
   "sourceRemoved": 0
 }
