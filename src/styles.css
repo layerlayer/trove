@@ -2694,3 +2694,49 @@ img {
   font-weight: 700;
   cursor: pointer;
 }
+
+/* ---------- 아티스트·브랜드 페이지로 가는 링크 ---------- */
+.release-card__eyebrow--link {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--gray-30);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+  text-underline-offset: 3px;
+}
+
+.detail-entity-link {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 2px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--white);
+  cursor: pointer;
+  text-align: left;
+}
+
+.detail-entity-link span {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-entity-link small {
+  flex: 1;
+  color: var(--gray-40);
+  font-size: 12px;
+}

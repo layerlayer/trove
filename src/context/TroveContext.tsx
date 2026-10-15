@@ -18,7 +18,7 @@ const initialState: TroveState = {
   interests: [],
   favorites: [],
   alerts: {},
-  unreadNotifications: 3,
+  notificationsSeenAt: null,
   user: null,
   settings: {
     defaultAlerts: ["D-1", "D-Day"],
@@ -122,7 +122,7 @@ export function TroveProvider({ children }: PropsWithChildren) {
   }, []);
 
   const markNotificationsRead = useCallback(() => {
-    setState((current) => ({ ...current, unreadNotifications: 0 }));
+    setState((current) => ({ ...current, notificationsSeenAt: new Date().toISOString() }));
   }, []);
 
   const signIn = useCallback((email: string, provider: TroveUser["provider"] = "email") => {

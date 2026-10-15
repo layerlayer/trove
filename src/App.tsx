@@ -10,6 +10,10 @@ import { HomePage } from "./pages/HomePage";
 import { PreferencesPage } from "./pages/PreferencesPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { TrovePage } from "./pages/TrovePage";
+import { EntityPage } from "./pages/EntityPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
+import { AboutPage, PrivacyPage, TermsPage } from "./pages/InfoPages";
+import { NotFoundPage } from "./pages/NotFoundPage";
 
 /** 새 화면으로 갈 때만 맨 위로. 뒤로 가기(POP)는 각 화면이 자리를 되살린다 */
 function ScrollToTop() {
@@ -68,7 +72,12 @@ export default function App() {
           <Route path="/calendar" element={<Navigate to="/trove" replace />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/release/:slug" element={<DetailPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/entity/:slug" element={<EntityPage />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </DataGate>
     </div>

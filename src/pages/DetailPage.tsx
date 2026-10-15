@@ -17,6 +17,7 @@ import { ReleaseListItem } from "../components/ReleaseListItem";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
 import { ReleaseThumb } from "../components/Media";
+import { entityInterestId } from "../data/published";
 import { useReleases } from "../data/ReleaseDataContext";
 import { dDayLabel, formatDate } from "../lib/date";
 import { track } from "../lib/analytics";
@@ -168,6 +169,13 @@ export function DetailPage() {
         <span className="eyebrow">{item.status === "confirmed" ? "DATE CONFIRMED" : item.status === "released" ? "RELEASED" : "COMING SOON"}</span>
         <div className="detail-title-row"><h1>{item.title}</h1><strong>{dDayLabel(item.releaseAt)}</strong></div>
         <p className="detail-date-line">{item.categoryLabel} · {dateText}</p>
+        {item.entityName ? (
+          <button className="detail-entity-link" type="button" onClick={() => navigate(`/entity/${entityInterestId(item.entityName ?? "").slice("entity:".length)}`)}>
+            <span>{item.entityName}</span>
+            <small>아티스트·브랜드 페이지</small>
+            <ChevronRight size={18} />
+          </button>
+        ) : null}
         <div className="tag-list" aria-label="분류">{item.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
 
         {item.waitingCount !== undefined ? <div className="detail-waiting-count"><Users size={18} /><strong>{item.waitingCount.toLocaleString("ko-KR")}명</strong><span>이 함께 기다리고 있어요</span></div> : null}

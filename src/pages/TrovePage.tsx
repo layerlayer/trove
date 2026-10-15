@@ -5,16 +5,16 @@ import { AppHeader } from "../components/AppHeader";
 import { AuthSheet } from "../components/AuthSheet";
 import { BottomNav } from "../components/BottomNav";
 import { BottomSheet } from "../components/BottomSheet";
-import { NotificationList } from "../components/NotificationList";
 import { ReleaseListItem } from "../components/ReleaseListItem";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
 import { useReleases } from "../data/ReleaseDataContext";
 import { daysUntil } from "../lib/date";
 import { track } from "../lib/analytics";
+import { useUnreadNotifications } from "../lib/useUnreadNotifications";
 import type { AlertPreset, ReleaseItem } from "../types";
 
-type TroveSheet = "notifications" | "alerts" | "remove" | null;
+type TroveSheet = "alerts" | "remove" | null;
 
 const alertOptions: Array<{ id: AlertPreset; title: string; description: string }> = [
   { id: "D-7", title: "일주일 전", description: "기대감을 천천히 끌어올려요." },
@@ -86,7 +86,8 @@ function groupTroveItems(items: ReleaseItem[]): TroveGroup[] {
 
 export function TrovePage() {
   const navigate = useNavigate();
-  const { state, toggleFavorite, setAlertPresets, markNotificationsRead } = useTrove();
+  const { state, toggleFavorite, setAlertPresets } = useTrove();
+  const unreadNotifications = useUnreadNotifications();
   const { releases } = useReleases();
   const [sheet, setSheet] = useState<TroveSheet>(null);
   const [selectedItem, setSelectedItem] = useState<ReleaseItem | null>(null);
@@ -127,11 +128,8 @@ export function TrovePage() {
     <main className="app-page trove-page">
       <StatusBar />
       <AppHeader
-        unreadCount={state.unreadNotifications}
-        onNotifications={() => {
-          markNotificationsRead();
-          setSheet("notifications");
-        }}
+        unreadCount={unreadNotifications}
+        onNotifications={() => navigate("/notifications")}
       />
 
       <section className="page-heading trove-heading">
@@ -198,10 +196,6 @@ export function TrovePage() {
       )}
 
       <BottomNav active="trove" />
-
-      <BottomSheet open={sheet === "notifications"} title="새로운 소식" description="내가 기다리는 일정의 변화를 모았어요." onClose={() => setSheet(null)}>
-        <NotificationList />
-      </BottomSheet>
 
       <BottomSheet
         open={sheet === "alerts"}

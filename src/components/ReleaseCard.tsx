@@ -10,6 +10,8 @@ interface ReleaseCardProps {
   favorite: boolean;
   onOpen: () => void;
   onFavorite: () => void;
+  /** 아이브로(아티스트·브랜드)를 누르면 그 페이지로 */
+  onEntity?: () => void;
 }
 
 export function ReleaseCard({
@@ -18,6 +20,7 @@ export function ReleaseCard({
   favorite,
   onOpen,
   onFavorite,
+  onEntity,
 }: ReleaseCardProps) {
   // 작은 카드에는 시각까지 넣으면 줄이 넘어가서 날짜만 보여 준다
   const showTime = variant !== "compact" && Boolean(item.releaseTime);
@@ -66,7 +69,23 @@ export function ReleaseCard({
         </button>
       </div>
       <div className="release-card__copy">
-        {variant === "feed" ? <span className="release-card__eyebrow">{eyebrow}</span> : null}
+        {variant === "feed" ? (
+          onEntity && item.entityName ? (
+            <button
+              className="release-card__eyebrow release-card__eyebrow--link"
+              type="button"
+              aria-label={`${item.entityName} 페이지 보기`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onEntity();
+              }}
+            >
+              {eyebrow}
+            </button>
+          ) : (
+            <span className="release-card__eyebrow">{eyebrow}</span>
+          )
+        ) : null}
         <h3>{item.title}</h3>
         <p>
           <span>{item.dateLabel}</span>
