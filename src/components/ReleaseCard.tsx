@@ -6,7 +6,7 @@ import { ReleaseThumb } from "./Media";
 
 interface ReleaseCardProps {
   item: ReleaseItem;
-  variant: "hero" | "compact";
+  variant: "hero" | "compact" | "feed";
   favorite: boolean;
   onOpen: () => void;
   onFavorite: () => void;
@@ -19,6 +19,15 @@ export function ReleaseCard({
   onOpen,
   onFavorite,
 }: ReleaseCardProps) {
+  const dateText = item.releaseAt
+    ? `${formatDate(item.releaseAt)}${item.releaseTime ? ` ${item.releaseTime}` : ""}`
+    : item.releaseWindow ?? "출시일 미정";
+  // "기타" 같은 빈 분류는 숨긴다
+  const kind = item.contentKind && item.contentKind !== "기타" ? item.contentKind : undefined;
+  const eyebrow = [item.entityName ?? item.categoryLabel, kind]
+    .filter((part, index, parts): part is string => Boolean(part) && parts.indexOf(part) === index)
+    .join(" · ");
+
   const handleKey = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -49,14 +58,15 @@ export function ReleaseCard({
             onFavorite();
           }}
         >
-          <Heart size={variant === "hero" ? 27 : 25} fill={favorite ? "currentColor" : "none"} />
+          <Heart size={variant === "compact" ? 25 : 27} fill={favorite ? "currentColor" : "none"} />
         </button>
       </div>
       <div className="release-card__copy">
+        {variant === "feed" ? <span className="release-card__eyebrow">{eyebrow}</span> : null}
         <h3>{item.title}</h3>
         <p>
           <span>{item.dateLabel}</span>
-          {formatDate(item.releaseAt)}
+          {dateText}
         </p>
       </div>
     </article>

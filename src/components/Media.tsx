@@ -2,9 +2,13 @@ import type { Interest, ReleaseItem } from "../types";
 
 /** 글자 타일에 쓸 첫 글자. 공백·기호는 건너뛴다 */
 export function initialOf(text: string | null | undefined): string {
-  const chars = Array.from((text ?? "").normalize("NFC").trim());
-  const first = chars.find((char) => /[\p{L}\p{N}]/u.test(char));
-  return (first ?? "?").toUpperCase();
+  const raw = (text ?? "").normalize("NFC").trim();
+  // "[단독판매] 정동하", "2026 소통왕", "2026-2027 KBL" 처럼 앞에 붙은 태그·연도는 건너뛴다
+  const cleaned = raw
+    .replace(/^(?:\s*[[(【][^\])】]*[\])】])+\s*/u, "")
+    .replace(/^(?:19|20)\d{2}(?:[-~–](?:19|20)?\d{2})?\s+/u, "");
+  const pick = (source: string) => Array.from(source).find((char) => /[\p{L}\p{N}]/u.test(char));
+  return (pick(cleaned) ?? pick(raw) ?? "?").toUpperCase();
 }
 
 interface ReleaseThumbProps {

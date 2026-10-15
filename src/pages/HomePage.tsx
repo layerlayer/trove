@@ -1,5 +1,5 @@
-import { ArrowRight, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { AuthSheet } from "../components/AuthSheet";
@@ -11,58 +11,63 @@ import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
 import { categories } from "../data/categories";
 import { useReleases } from "../data/ReleaseDataContext";
-import { daysUntil } from "../lib/date";
+import { dDayLabel } from "../lib/date";
+import { buildFeed, nextSavedRelease, type FeedBlock } from "../lib/feed";
 import { track } from "../lib/analytics";
 import type { Category, ReleaseItem } from "../types";
 
 type HomeSheet = "notifications" | "saved" | null;
 
-const compareReleaseDate = (a: ReleaseItem, b: ReleaseItem) => {
-  if (!a.releaseAt) return 1;
-  if (!b.releaseAt) return -1;
-  return a.releaseAt.localeCompare(b.releaseAt);
-};
+/** 한 번에 더 그리는 블록 수(카드·추천 줄 합쳐서) */
+const PAGE_SIZE = 6;
 
 export function HomePage() {
   const navigate = useNavigate();
-  const { state, toggleFavorite, markNotificationsRead } = useTrove();
+  const { state, toggleFavorite, toggleInterest, markNotificationsRead } = useTrove();
   const { releases } = useReleases();
   const [activeCategory, setActiveCategory] = useState<"all" | Category>("all");
   const [sheet, setSheet] = useState<HomeSheet>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [pendingItem, setPendingItem] = useState<ReleaseItem | null>(null);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => track("home_view"), []);
 
-  const visibleReleases = useMemo(() => {
-    const filtered = releases.filter(
-      (release) =>
-        release.status !== "released" &&
-        (activeCategory === "all" || release.category === activeCategory),
-    );
-    return [...filtered].sort((a, b) => {
-      const aMatch = a.interestIds.some((id) => state.interests.includes(id)) ? 1 : 0;
-      const bMatch = b.interestIds.some((id) => state.interests.includes(id)) ? 1 : 0;
-      return bMatch - aMatch || compareReleaseDate(a, b);
-    });
-  }, [activeCategory, releases, state.interests]);
-
-  const nextSaved = useMemo(
-    () =>
-      releases
-        .filter((item) => state.favorites.includes(item.id) && (daysUntil(item.releaseAt) ?? -1) >= 0)
-        .sort(compareReleaseDate)[0],
-    [releases, state.favorites],
+  const feed = useMemo(
+    () => buildFeed({ releases, interests: state.interests, category: activeCategory }),
+    [activeCategory, releases, state.interests],
   );
-  const hero = activeCategory === "all" && nextSaved ? nextSaved : visibleReleases[0];
-  const thisWeek = visibleReleases.filter((item) => {
-    const days = daysUntil(item.releaseAt);
-    return days !== null && days >= 0 && days <= 7 && item.id !== hero?.id;
-  });
-  const thisWeekIds = new Set(thisWeek.map((item) => item.id));
-  const recommendations = visibleReleases
-    .filter((item) => item.id !== hero?.id && !thisWeekIds.has(item.id))
-    .slice(0, 7);
+  const nextSaved = useMemo(() => nextSavedRelease(releases, state.favorites), [releases, state.favorites]);
+
+  // 필터나 관심사가 바뀌면 처음부터 다시 내려본다
+  const feedKey = `${activeCategory}|${state.interests.join(",")}|${releases.length}`;
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [feedKey]);
+
+  const total = feed.blocks.length;
+  const hasMore = visibleCount < total;
+  useEffect(() => {
+    if (!hasMore) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    if (!("IntersectionObserver" in window)) {
+      setVisibleCount(total);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisibleCount((count) => Math.min(count + PAGE_SIZE, total));
+          track("feed_more", { surface: "home" });
+        }
+      },
+      { rootMargin: "480px 0px" },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, total, visibleCount]);
 
   const openNotifications = () => {
     setSheet("notifications");
@@ -93,7 +98,7 @@ export function HomePage() {
     setSheet("saved");
   };
 
-  const card = (item: ReleaseItem, variant: "hero" | "compact") => (
+  const card = (item: ReleaseItem, variant: "feed" | "compact") => (
     <ReleaseCard
       key={item.id}
       item={item}
@@ -103,6 +108,44 @@ export function HomePage() {
       onFavorite={() => save(item)}
     />
   );
+
+  const renderBlock = (block: FeedBlock) => {
+    if (block.type === "item") return card(block.item, "feed");
+    if (block.type === "row") {
+      return (
+        <section className="feed-row" key={block.key} aria-label={block.title}>
+          <div className="feed-row__heading">
+            <span className="eyebrow">{block.eyebrow}</span>
+            <h2>{block.title}</h2>
+          </div>
+          <div className="recommendation-row">{block.items.map((item) => card(item, "compact"))}</div>
+        </section>
+      );
+    }
+    return (
+      <div className="feed-notice" key={block.key} role="note">
+        <strong>{block.title}</strong>
+        <p>{block.body}</p>
+        {block.action === "preferences" ? (
+          <button className="text-button" type="button" onClick={() => navigate("/preferences", { state: { returnTo: "/home" } })}>
+            관심사 고르기 <ChevronRight size={14} />
+          </button>
+        ) : null}
+        {block.action === "follow-category" && activeCategory !== "all" ? (
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => {
+              toggleInterest(`category:${activeCategory}`);
+              track("category_followed", { category: activeCategory, surface: "home_feed" });
+            }}
+          >
+            관심사에 더하기 <ChevronRight size={14} />
+          </button>
+        ) : null}
+      </div>
+    );
+  };
 
   return (
     <main className="app-page home-page">
@@ -127,33 +170,29 @@ export function HomePage() {
         ))}
       </div>
 
-      <section className="home-content">
-        <div className="home-hero-context">
-          <div>
-            <span className="eyebrow">{nextSaved && hero?.id === nextSaved.id ? "YOUR NEXT RELEASE" : "PICKED FOR YOU"}</span>
-            <h1>{nextSaved && hero?.id === nextSaved.id ? "내 다음 기다림" : "오늘의 기다림"}</h1>
-          </div>
-          <Sparkles size={21} />
-        </div>
-
-        {hero ? card(hero, "hero") : activeCategory === "all" ? (
-          <div className="empty-state home-empty"><strong>아직 발행된 출시 일정이 없어요</strong><p>운영 콘솔에서 일정이 발행되면 여기에 보여요.</p></div>
-        ) : (
-          <div className="empty-state home-empty"><strong>이 카테고리의 출시작을 준비 중이에요</strong><p>전체 탭에서 다른 기다림을 둘러보세요.</p></div>
-        )}
-
-        {thisWeek.length > 0 ? (
-          <section className="recommendation-section">
-            <div className="home-section-heading"><h2>이번 주 출시</h2><button type="button" onClick={() => navigate("/discover")}>전체보기 <ArrowRight size={16} /></button></div>
-            <div className="recommendation-row">{thisWeek.map((item) => card(item, "compact"))}</div>
-          </section>
+      <section className="feed" aria-label={feed.personalized ? "내 취향 피드" : "모든 기다림 피드"}>
+        {nextSaved ? (
+          <button className="next-up" type="button" onClick={() => navigate(`/release/${nextSaved.slug}`)}>
+            <span className="next-up__label">내 다음 기다림</span>
+            <strong>{nextSaved.title}</strong>
+            <b>{dDayLabel(nextSaved.releaseAt)}</b>
+            <ArrowRight size={16} />
+          </button>
         ) : null}
 
-        {recommendations.length > 0 ? (
-          <section className="recommendation-section">
-            <div className="home-section-heading"><h2>이런 기다림도 좋아하실 것 같아요.</h2></div>
-            <div className="recommendation-row">{recommendations.map((item) => card(item, "compact"))}</div>
-          </section>
+        {feed.blocks.slice(0, visibleCount).map(renderBlock)}
+
+        {hasMore ? (
+          <div className="feed-sentinel" ref={sentinelRef}>
+            <button className="text-button" type="button" onClick={() => setVisibleCount((count) => Math.min(count + PAGE_SIZE, total))}>
+              더 보기
+            </button>
+          </div>
+        ) : feed.itemCount > 0 ? (
+          <p className="feed-end">
+            오늘의 기다림은 여기까지예요.
+            <button type="button" onClick={() => navigate("/discover")}>더 찾아보기</button>
+          </p>
         ) : null}
       </section>
 
