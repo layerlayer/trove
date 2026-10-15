@@ -16,7 +16,8 @@ import { BottomSheet } from "../components/BottomSheet";
 import { ReleaseListItem } from "../components/ReleaseListItem";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
-import { releases } from "../data/mock";
+import { ReleaseThumb } from "../components/Media";
+import { useReleases } from "../data/ReleaseDataContext";
 import { dDayLabel, formatDate } from "../lib/date";
 import { track } from "../lib/analytics";
 import type { AlertPreset } from "../types";
@@ -40,6 +41,7 @@ export function DetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { state, toggleFavorite, setAlertPresets } = useTrove();
+  const { releases } = useReleases();
   const item = releases.find((release) => release.slug === slug);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [sheet, setSheet] = useState<DetailSheet>(null);
@@ -49,7 +51,7 @@ export function DetailPage() {
 
   const related = useMemo(
     () => item ? releases.filter((release) => release.id !== item.id && (release.category === item.category || release.interestIds.some((id) => item.interestIds.includes(id)))).slice(0, 3) : [],
-    [item],
+    [item, releases],
   );
 
   useEffect(() => {
@@ -135,7 +137,7 @@ export function DetailPage() {
     setSheet("shared");
   };
 
-  const dateText = item.releaseAt ? formatDate(item.releaseAt) : item.releaseWindow ?? "출시일 미정";
+  const dateText = item.releaseAt ? `${formatDate(item.releaseAt)}${item.releaseTime ? ` ${item.releaseTime}` : ""}` : item.releaseWindow ?? "출시일 미정";
 
   return (
     <main className="app-page detail-page">
@@ -145,12 +147,22 @@ export function DetailPage() {
         <button className="icon-button" type="button" aria-label="공유하기" onClick={share}><Share2 size={26} strokeWidth={1.8} /></button>
       </header>
 
-      <section className="detail-gallery" aria-label={`${item.title} 이미지 ${galleryIndex + 1} / ${item.gallery.length}`}>
-        <img src={item.gallery[galleryIndex]} alt={`${item.title} 이미지 ${galleryIndex + 1}`} style={{ objectPosition: item.galleryPositions?.[galleryIndex] ?? "50% 50%" }} />
-        <button className="gallery-arrow gallery-arrow--left" type="button" aria-label="이전 이미지" onClick={() => changeSlide(-1)}><ChevronLeft size={24} /></button>
-        <button className="gallery-arrow gallery-arrow--right" type="button" aria-label="다음 이미지" onClick={() => changeSlide(1)}><ChevronRight size={24} /></button>
-        <span className="gallery-count">{galleryIndex + 1} / {item.gallery.length}</span>
-      </section>
+      {item.gallery.length > 0 ? (
+        <section className="detail-gallery" aria-label={`${item.title} 이미지 ${galleryIndex + 1} / ${item.gallery.length}`}>
+          <img src={item.gallery[galleryIndex]} alt={`${item.title} 이미지 ${galleryIndex + 1}`} style={{ objectPosition: item.galleryPositions?.[galleryIndex] ?? "50% 50%" }} />
+          {item.gallery.length > 1 ? (
+            <>
+              <button className="gallery-arrow gallery-arrow--left" type="button" aria-label="이전 이미지" onClick={() => changeSlide(-1)}><ChevronLeft size={24} /></button>
+              <button className="gallery-arrow gallery-arrow--right" type="button" aria-label="다음 이미지" onClick={() => changeSlide(1)}><ChevronRight size={24} /></button>
+              <span className="gallery-count">{galleryIndex + 1} / {item.gallery.length}</span>
+            </>
+          ) : null}
+        </section>
+      ) : (
+        <section className="detail-gallery detail-gallery--empty" aria-hidden="true">
+          <ReleaseThumb item={item} showLabel />
+        </section>
+      )}
 
       <section className="detail-content">
         <span className="eyebrow">{item.status === "confirmed" ? "DATE CONFIRMED" : item.status === "released" ? "RELEASED" : "COMING SOON"}</span>
@@ -158,7 +170,7 @@ export function DetailPage() {
         <p className="detail-date-line">{item.categoryLabel} · {dateText}</p>
         <div className="tag-list" aria-label="분류">{item.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
 
-        <div className="detail-waiting-count"><Users size={18} /><strong>{(item.waitingCount ?? 0).toLocaleString("ko-KR")}명</strong><span>이 함께 기다리고 있어요</span></div>
+        {item.waitingCount !== undefined ? <div className="detail-waiting-count"><Users size={18} /><strong>{item.waitingCount.toLocaleString("ko-KR")}명</strong><span>이 함께 기다리고 있어요</span></div> : null}
 
         <div className="detail-divider" />
         <section className="detail-description"><h2>소개</h2><p>{item.description ?? `${item.title}의 공식 출시 일정과 변동 사항을 Trove에서 계속 확인해보세요.`}</p></section>

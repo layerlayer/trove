@@ -9,8 +9,9 @@ import {
 } from "react";
 import type { AlertPreset, TroveState, TroveUser } from "../types";
 
-const STORAGE_KEY = "trove-demo-state-v2";
-const LEGACY_STORAGE_KEY = "trove-demo-state-v1";
+/** v3: 발행물 기반 id(관심사 category:/entity:, 출시 항목은 콘솔 id)로 바뀌어 v2 의 관심사·담기·알림은 이어받지 않는다 */
+const STORAGE_KEY = "trove-demo-state-v3";
+const LEGACY_STORAGE_KEYS = ["trove-demo-state-v2", "trove-demo-state-v1"];
 
 const initialState: TroveState = {
   onboardingComplete: false,
@@ -46,16 +47,27 @@ const TroveContext = createContext<TroveContextValue | null>(null);
 
 function readState(): TroveState {
   try {
-    const saved =
-      window.localStorage.getItem(STORAGE_KEY) ??
-      window.localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (!saved) return initialState;
-    const parsed = JSON.parse(saved) as Partial<TroveState>;
-    return {
-      ...initialState,
-      ...parsed,
-      settings: { ...initialState.settings, ...parsed.settings },
-    };
+    const saved = window.localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved) as Partial<TroveState>;
+      return {
+        ...initialState,
+        ...parsed,
+        settings: { ...initialState.settings, ...parsed.settings },
+      };
+    }
+    // 예전 목업 상태에서는 로그인과 설정만 이어받는다. 관심사·담기·알림은 id 체계가 달라 버린다.
+    for (const key of LEGACY_STORAGE_KEYS) {
+      const legacy = window.localStorage.getItem(key);
+      if (!legacy) continue;
+      const parsed = JSON.parse(legacy) as Partial<TroveState>;
+      return {
+        ...initialState,
+        user: parsed.user ?? null,
+        settings: { ...initialState.settings, ...parsed.settings },
+      };
+    }
+    return initialState;
   } catch {
     return initialState;
   }
@@ -157,7 +169,7 @@ export function TroveProvider({ children }: PropsWithChildren) {
 
   const resetDemo = useCallback(() => {
     window.localStorage.removeItem(STORAGE_KEY);
-    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+    for (const key of LEGACY_STORAGE_KEYS) window.localStorage.removeItem(key);
     setState(initialState);
   }, []);
 

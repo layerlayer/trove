@@ -2,6 +2,8 @@ const ANALYTICS_KEY = "trove-analytics-v1";
 
 export type AnalyticsEventName =
   | "home_view"
+  | "feed_more"
+  | "category_followed"
   | "discover_search"
   | "category_selected"
   | "item_view"

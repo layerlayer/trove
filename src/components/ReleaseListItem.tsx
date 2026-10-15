@@ -1,6 +1,7 @@
 import { Bell, Check, Gem } from "lucide-react";
 import type { ReleaseItem } from "../types";
 import { dDayLabel, formatDate } from "../lib/date";
+import { ReleaseThumb } from "./Media";
 
 interface ReleaseListItemProps {
   item: ReleaseItem;
@@ -25,7 +26,7 @@ export function ReleaseListItem({
     <article className="release-list-item">
       <button className="release-list-item__main" type="button" onClick={onOpen}>
         <span className="release-list-item__image-wrap">
-          <img src={item.thumbnail} alt="" />
+          <ReleaseThumb item={item} />
           <b>{dDayLabel(item.releaseAt)}</b>
         </span>
         <span className="release-list-item__copy">

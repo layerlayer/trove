@@ -16,6 +16,24 @@ npm run check
 npm run build
 ```
 
+## 데이터
+
+앱은 목업 데이터를 쓰지 않고, 운영 콘솔(`trove-ops`)이 **승인된 일정만** 모아 발행한 `releases.json` 을 읽습니다.
+
+- 앱이 시작할 때 같은 사이트의 `/releases.json`(과 `/releases.meta.json`)을 한 번 내려받아 모든 화면이 공유합니다.
+- 개발 서버(`npm run dev`)는 `trove-ops/data`(또는 `TROVE_OPS_DATA_DIR`)의 발행물을 바로 읽습니다. 콘솔에서 발행한 뒤 브라우저를 새로고침하면 됩니다.
+- 배포용 빌드와 커밋에는 아래처럼 `public/` 로 복사한 사본이 필요합니다.
+
+```bash
+npm run data:pull            # ./trove-ops/data → public/
+TROVE_OPS_DATA_DIR=/path/to/data npm run data:pull
+```
+
+- 가져온 `public/releases.json` 을 커밋해 배포하면 Vercel 이 그대로 서빙합니다. 파일이 없으면 앱은 "출시 일정을 불러오지 못했어요" 화면을 보여 줍니다.
+- 다른 주소의 발행물을 읽게 하려면 `VITE_RELEASES_URL`(과 `VITE_RELEASES_META_URL`) 환경 변수를 빌드 시점에 넣습니다. 다른 도메인이면 그쪽 서버가 CORS(`Access-Control-Allow-Origin`)를 허용해야 합니다.
+- `npm run build` 는 `public/releases.json` 이 없으면(그리고 `VITE_RELEASES_URL` 도 없으면) 멈춥니다. 발행 파일 없이 배포되는 일을 막기 위해서입니다.
+- 발행물 → 앱 변환 규칙은 `src/data/published.ts` 에 있습니다. 날짜는 `YYYY-MM-DD` 만 쓰고(시각은 공연 티켓오픈에만), 기간형 일정은 "2026년 11월" 같은 말로 바꾸며, 이미지가 없는 항목은 아티스트·브랜드 첫 글자로 그린 타일을 씁니다. 관심사 목록은 카테고리 다섯 개와 발행물 속 아티스트·브랜드에서 만듭니다.
+
 ## 구현된 흐름
 
 - 관심사 검색·선택 및 선택값 저장
@@ -45,7 +63,7 @@ npm run build
 
 ## 데이터 연결 지점
 
-현재 데이터는 [`src/data/mock.ts`](./src/data/mock.ts)의 `ReleaseItem[]`에 분리되어 있습니다. 날짜 확정 콘텐츠뿐 아니라 날짜 미정, 상태 변경, 출처, 마지막 확인 일시를 표현할 수 있습니다.
+출시 데이터는 위 `데이터` 절대로 `public/releases.json`(운영 콘솔 발행물) 에서 오고, 앱 쪽 변환 규칙은 `src/data/published.ts` 에 있습니다. 날짜 확정 콘텐츠뿐 아니라 날짜 미정·예정 시기, 상태, 출처, 마지막 확인 일시를 표현할 수 있습니다.
 
 회원 인증과 상태 저장은 제품 흐름 검증을 위한 브라우저 로컬 구현입니다. 실제 Supabase Auth/DB, 헤르메스 XLSX → staging → 관리자 승인 콘솔, 푸시 구독 키와 예약 발송, 결제는 서버 자격증명과 관리자 권한 정책을 연결한 뒤 추가해야 합니다. 공개 배포에서 URL만 숨긴 운영 콘솔은 보안 기능이 아니므로 현재 버전에는 포함하지 않았습니다.
 # trove

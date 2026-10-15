@@ -7,7 +7,8 @@ import { BottomSheet } from "../components/BottomSheet";
 import { NotificationList } from "../components/NotificationList";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
-import { releases } from "../data/mock";
+import { ReleaseThumb } from "../components/Media";
+import { useReleases } from "../data/ReleaseDataContext";
 import {
   dDayLabel,
   formatDate,
@@ -50,7 +51,7 @@ function getWeekGrid(selected: Date): Date[] {
 function EventRow({ item, onOpen }: { item: ReleaseItem; onOpen: () => void }) {
   return (
     <button className="calendar-event" type="button" onClick={onOpen}>
-      <img src={item.thumbnail} alt="" />
+      <ReleaseThumb item={item} className="calendar-event__media" />
       <span className="calendar-event__copy">
         <span className="calendar-event__heading">
           <strong>{item.title}</strong>
@@ -67,11 +68,12 @@ function EventRow({ item, onOpen }: { item: ReleaseItem; onOpen: () => void }) {
 export function CalendarPage() {
   const navigate = useNavigate();
   const { state, markNotificationsRead, resetDemo } = useTrove();
+  const { releases } = useReleases();
   const firstTracked =
     releases.find((item) => state.favorites.includes(item.id) && item.releaseAt) ??
     releases.find((item) => item.releaseAt) ??
     releases[0];
-  const initialDate = firstTracked.releaseAt ? parseLocalDate(firstTracked.releaseAt) : new Date();
+  const initialDate = firstTracked?.releaseAt ? parseLocalDate(firstTracked.releaseAt) : new Date();
   const [viewDate, setViewDate] = useState(
     () => new Date(initialDate.getFullYear(), initialDate.getMonth(), 1, 12),
   );
@@ -85,7 +87,7 @@ export function CalendarPage() {
   );
   const trackedReleases = useMemo(
     () => releases.filter((item) => trackedIds.has(item.id)),
-    [trackedIds],
+    [releases, trackedIds],
   );
 
   const visibleDays = useMemo(
