@@ -3,56 +3,22 @@
  * 운영 콘솔(trove-ops)이 발행한 releases.json / releases.meta.json 을 앱의 public/ 로 복사한다.
  *   npm run data:pull                      # <앱 폴더>/trove-ops/data 에서
  *   TROVE_OPS_DATA_DIR=/path/to/data npm run data:pull
- * 경로는 이 스크립트가 있는 앱 폴더 기준이라 어디서 실행해도 같은 곳에 쓴다.
+ * 경로는 이 스크립트가 있는 앱 폴더 기준이라 어디서 실행해도 같은 곳에 쓴다(TROVE_APP_ROOT 로 바꿀 수 있다).
  * JSON 으로 읽히지 않는 파일은 복사하지 않는다(앱이 깨진 데이터를 싣지 않게).
+ * 복사 로직은 scripts/lib/releases.mjs 에 있고, 복사한 뒤 커밋·푸시까지 하려면 npm run data:push 를 쓴다.
  */
-import { copyFile, mkdir, readFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
+import { appRoot, formatPullSummary, opsDataDir, pullReleases } from "./lib/releases.mjs";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const sourceDir = resolve(root, process.env.TROVE_OPS_DATA_DIR ?? "trove-ops/data");
-const targetDir = resolve(root, "public");
+const root = appRoot();
 
-async function readJson(path) {
-  return JSON.parse(await readFile(path, "utf8"));
-}
-
-const itemsPath = resolve(sourceDir, "releases.json");
-const metaPath = resolve(sourceDir, "releases.meta.json");
-
-let items;
+let result;
 try {
-  items = await readJson(itemsPath);
+  result = await pullReleases({ root, sourceDir: opsDataDir(root), targetDir: resolve(root, "public") });
 } catch (cause) {
-  console.error(`releases.json 을 읽지 못했어요: ${itemsPath}\n${cause instanceof Error ? cause.message : cause}`);
+  // pullReleases 는 public/ 에 쓰기 전에 던지므로 data:pull 은 이렇게 말할 수 있다(data:push 는 그 전에 발행 파일을 되돌렸을 수 있어 따로 말한다).
+  console.error(`${cause instanceof Error ? cause.message : String(cause)} 아무것도 바꾸지 않았어요.`);
   process.exit(1);
 }
-if (!Array.isArray(items)) {
-  console.error(`releases.json 이 목록이 아니에요: ${itemsPath}`);
-  process.exit(1);
-}
-
-await mkdir(targetDir, { recursive: true });
-const targetItems = resolve(targetDir, "releases.json");
-await copyFile(itemsPath, targetItems);
-
-let publishedAt = null;
-try {
-  const meta = await readJson(metaPath);
-  await copyFile(metaPath, resolve(targetDir, "releases.meta.json"));
-  publishedAt = typeof meta?.publishedAt === "string" ? meta.publishedAt : null;
-} catch {
-  console.warn("releases.meta.json 이 없거나 읽히지 않아 건너뛰었어요.");
-}
-
-const byCategory = {};
-for (const item of items) {
-  const key = item?.category ?? "?";
-  byCategory[key] = (byCategory[key] ?? 0) + 1;
-}
-console.log(
-  `복사 완료: ${items.length}건 → ${targetItems}` +
-    (publishedAt ? ` (발행 ${publishedAt})` : "") +
-    `\n카테고리별: ${Object.entries(byCategory).map(([k, v]) => `${k} ${v}`).join(" · ") || "-"}`,
-);
+for (const warning of result.warnings) console.warn(warning);
+console.log(formatPullSummary(result));

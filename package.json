@@ -9,7 +9,12 @@
     "build": "tsc --noEmit && vite build",
     "check": "tsc --noEmit --pretty false",
     "preview": "vite preview",
-    "data:pull": "node scripts/pull-releases.mjs"
+    "data:pull": "node scripts/pull-releases.mjs",
+    "data:push": "node scripts/push-releases.mjs",
+    "data:push:install": "node scripts/macos/data-push-agent.mjs install",
+    "data:push:uninstall": "node scripts/macos/data-push-agent.mjs uninstall",
+    "data:push:status": "node scripts/macos/data-push-agent.mjs status",
+    "test": "node --test \"scripts/test/*.test.mjs\""
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
