@@ -43,7 +43,8 @@ export function countByCategory(items) {
   return byCategory;
 }
 
-const NEXT_ACTION = "운영 콘솔에서 먼저 발행했는지, 발행물 폴더 위치(TROVE_OPS_DATA_DIR)가 맞는지 확인해 주세요. 아무것도 바꾸지 않았어요.";
+// "아무것도 바꾸지 않았어요" 는 여기서 말하지 않는다 — 그 전에 다른 파일을 손댔는지는 부르는 쪽(data:pull / data:push)만 안다.
+const NEXT_ACTION = "운영 콘솔에서 먼저 발행했는지, 발행물 폴더 위치(TROVE_OPS_DATA_DIR)가 맞는지 확인해 주세요.";
 
 /**
  * 발행물을 targetDir 로 복사한다.
@@ -70,7 +71,7 @@ export async function pullReleases({
     );
   }
   if (!Array.isArray(items)) {
-    throw new Error(`releases.json 이 목록이 아니에요: ${itemsPath}\n운영 콘솔에서 다시 발행해 주세요. 아무것도 바꾸지 않았어요.`);
+    throw new Error(`releases.json 이 목록이 아니에요: ${itemsPath}\n운영 콘솔에서 다시 발행해 주세요.`);
   }
 
   await mkdir(targetDir, { recursive: true });

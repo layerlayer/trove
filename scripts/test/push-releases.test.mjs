@@ -159,6 +159,30 @@ async function makeFixture({ withPublic = false } = {}) {
       await mkdir(join(bare, "hooks"), { recursive: true });
       await writeFile(path, `${["#!/bin/sh", ...lines, ""].join("\n")}`, { mode: 0o755 });
     },
+    /** 작업 저장소에 pre-commit 훅을 둔다(지우려면 null). `git commit` 이 실패하는 상황을 만든다. */
+    setPreCommitHook: async (lines) => {
+      const path = join(app, ".git", "hooks", "pre-commit");
+      if (lines === null) return rm(path, { force: true });
+      await mkdir(join(app, ".git", "hooks"), { recursive: true });
+      await writeFile(path, `${["#!/bin/sh", ...lines, ""].join("\n")}`, { mode: 0o755 });
+    },
+    /** PATH 앞에 둘 git 대용품: `remote get-url` 에는 GitHub 주소를 답하고 나머지는 진짜 git 에 넘긴다. */
+    githubRemoteShim: async () => {
+      const bin = join(tmp, "github-bin");
+      await mkdir(bin);
+      const realGit = (await sh("sh", ["-c", "command -v git"], { cwd: app, env: baseEnv })).stdout.trim();
+      await writeFile(
+        join(bin, "git"),
+        [
+          "#!/bin/sh",
+          `if [ "$1" = "remote" ] && [ "$2" = "get-url" ]; then echo 'https://github.com/test/repo.git'; exit 0; fi`,
+          `exec '${realGit}' "$@"`,
+          "",
+        ].join("\n"),
+        { mode: 0o755 },
+      );
+      return { ...env, PATH: `${bin}:${process.env.PATH}` };
+    },
     cleanup: () => rm(tmp, { recursive: true, force: true }),
   };
   return fx;
@@ -312,6 +336,17 @@ describe("push-releases: 독립 시나리오", () => {
     assert.equal(await exists(join(fx.app, ".git", "trove-data-push.lock")), false);
   });
 
+  test("(5d) TROVE_APP_ROOT 가 없는 폴더면 'git 명령을 찾지 못했어요' 가 아니라 그 폴더가 없다고 알린다", async () => {
+    const fx = await fixture();
+    const missing = join(fx.tmp, "missing");
+    const result = await fx.push([], { TROVE_APP_ROOT: missing });
+    assert.equal(result.code, 1, result.stdout);
+    assert.ok(result.stderr.includes("앱 폴더가 없어요"), result.stderr);
+    assert.ok(result.stderr.includes(missing), result.stderr);
+    assert.ok(!result.stderr.includes("PATH"), result.stderr);
+    assert.equal(await exists(join(fx.app, ".git", "trove-data-push.lock")), false);
+  });
+
   test("(6) --dry-run 은 원격도 로컬도 바꾸지 않는다 (원격이 앞서 있어도 fast-forward 하지 않는다)", async () => {
     const fx = await fixture();
     // 원격만 한 커밋 앞서게 둔다: 커밋을 올린 뒤 로컬 main 만 되돌린다
@@ -354,6 +389,34 @@ describe("push-releases: 독립 시나리오", () => {
     assert.equal(diverged.code, 1, diverged.stdout);
     assert.ok(diverged.stderr.includes("갈라져 있어요"), diverged.stderr);
     assert.equal(await readText(join(fx.app, "public", "releases.json")), dirty);
+  });
+
+  test("(6c) --dry-run 은 fast-forward 를 건너뛰어도 원격 커밋 기준으로 예측한다 (원격에 같은 발행물이 이미 있으면 '변경 없음', 급감도 그 건수 기준)", async () => {
+    const fx = await fixture();
+    assert.equal((await fx.push()).code, 0);
+    // 다른 머신이 이미 지금 발행물을 푸시한 상황: 로컬만 발행 커밋 전으로 돌린다(원격에는 그 커밋이 있다)
+    const head = await fx.git(["rev-parse", "HEAD~1"]);
+    await fx.git(["reset", "--quiet", "--hard", head]);
+    assert.equal(await exists(join(fx.app, "public", "releases.json")), false);
+
+    const result = await fx.push(["--dry-run"]);
+    assert.equal(result.code, 0, `${result.stdout}\n${result.stderr}`);
+    assert.ok(result.stdout.includes("fast-forward"), result.stdout);
+    assert.ok(result.stdout.includes("변경 없음"), `실제 실행처럼 '변경 없음' 이어야 해요:\n${result.stdout}`);
+    assert.ok(!result.stdout.includes("커밋할 파일"), result.stdout);
+    assert.equal(await fx.git(["rev-parse", "HEAD"]), head, "dry-run 은 로컬 main 을 움직이면 안 돼요");
+    assert.equal(await fx.localStatus(), "");
+    assert.equal(await exists(join(fx.app, "public", "releases.json")), false);
+
+    // 급감 판단도 (아직 fast-forward 하지 않은) 로컬 HEAD 가 아니라 원격 커밋의 건수를 기준으로 한다
+    await writeData(fx.data, ITEMS.slice(0, 1), { ...META, count: 1 });
+    const shrink = await fx.push(["--dry-run"]);
+    assert.equal(shrink.code, 1, shrink.stdout);
+    assert.ok(shrink.stderr.includes("3건에서 1건"), shrink.stderr);
+    assert.equal(await fx.git(["rev-parse", "HEAD"]), head);
+    assert.equal(await fx.localStatus(), "");
+    assert.equal(await exists(join(fx.app, "public", "releases.json")), false);
+    assert.equal((await fx.remoteLog()).length, 2);
   });
 
   test("(7) 관련 없는 수정·스테이징은 커밋에 섞이지 않고 그대로 남는다", async () => {
@@ -401,7 +464,7 @@ describe("push-releases: 독립 시나리오", () => {
     assert.ok(busy.stderr.includes("진행 중"), busy.stderr);
     assert.ok(busy.stderr.includes(String(process.pid)), busy.stderr);
     assert.match(busy.stderr, /\d{4}-\d{2}-\d{2} \d{2}:\d{2} 시작/, "시작 시각은 서울 시각으로");
-    assert.ok(!busy.stderr.includes("T"), `ISO 시각이 섞이면 안 돼요:\n${busy.stderr}`);
+    assert.doesNotMatch(busy.stderr, /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/, `ISO 시각이 섞이면 안 돼요:\n${busy.stderr}`);
     assert.equal((await fx.remoteLog()).length, 1);
     assert.equal(await exists(lockPath), true, "남의 잠금은 지우지 않아요");
 
@@ -421,6 +484,20 @@ describe("push-releases: 독립 시나리오", () => {
     assert.ok(dead.stderr.includes("끝난 실행"), dead.stderr);
     assert.equal((await fx.remoteLog()).length, 2);
     assert.equal(await exists(lockPath), false);
+
+    // 살아 있는 실행의 잠금은 30분이 넘었어도 치우지 않는다(치우면 두 실행이 같은 저장소를 동시에 만지고, 먼저 돌던 실행이 끝날 때 새 잠금까지 지운다)
+    await writeFile(lockPath, JSON.stringify({ pid: process.pid, time: new Date(Date.now() - 40 * 60 * 1000).toISOString() }));
+    const longRunning = await fx.push();
+    assert.equal(longRunning.code, 1, longRunning.stdout);
+    assert.ok(longRunning.stderr.includes("진행 중"), longRunning.stderr);
+    assert.ok(longRunning.stderr.includes("30분 넘게 진행 중"), longRunning.stderr);
+    assert.ok(!longRunning.stderr.includes("치웠어요"), longRunning.stderr);
+    assert.equal(await exists(lockPath), true, "살아 있는 실행의 잠금은 오래됐어도 지우지 않아요");
+    const quietLongRunning = await fx.push(["--quiet"]);
+    assert.equal(quietLongRunning.code, 0, quietLongRunning.stderr);
+    assert.ok(quietLongRunning.stdout.includes("건너뛰어요"), quietLongRunning.stdout);
+    assert.equal(await exists(lockPath), true);
+    await rm(lockPath);
 
     // pid 를 알 수 없는 잠금은 30분 기준으로만 판단한다
     await writeFile(lockPath, JSON.stringify({ time: new Date(Date.now() - 40 * 60 * 1000).toISOString() }));
@@ -638,6 +715,141 @@ describe("push-releases: 독립 시나리오", () => {
     assert.equal(retried.code, 0, retried.stderr);
     assert.equal((await fx.remoteLog()).length, 2);
   });
+
+  test("커밋이 실패하면(pre-commit 훅 거절) 스테이징을 풀고 발행 파일을 원래대로 되돌린 뒤 멈춘다", async () => {
+    const fx = await fixture();
+    await fx.setPreCommitHook(['echo "hook says no" >&2', "exit 1"]);
+    const failed = await fx.push();
+    assert.equal(failed.code, 1, failed.stdout);
+    assert.ok(failed.stderr.includes("커밋을 만들지 못했어요"), failed.stderr);
+    assert.ok(failed.stderr.includes("hook says no"), failed.stderr);
+    assert.ok(failed.stderr.includes("원래대로 되돌렸어요"), failed.stderr);
+    assert.equal(await fx.localStatus(), "", "스테이징된 발행 파일이 남으면 안 돼요");
+    assert.equal(await exists(join(fx.app, "public")), false, "이 실행이 만든 public/ 은 지워야 해요");
+    assert.equal((await fx.remoteLog()).length, 1);
+
+    await fx.setPreCommitHook(null);
+    const retried = await fx.push();
+    assert.equal(retried.code, 0, retried.stderr);
+    assert.ok(!retried.stderr.includes("커밋되지 않은 발행 파일 변경을 먼저 되돌려요"), `앞 실행이 깨끗이 되돌렸어야 해요:\n${retried.stderr}`);
+    assert.equal((await fx.remoteLog()).length, 2);
+
+    // 이미 커밋된 발행 파일이 바뀌는 경우("M ")도 HEAD 내용으로 되돌리고, 원래 있던 public/ 은 그대로 둔다
+    const before = await readText(join(fx.app, "public", "releases.json"));
+    await writeData(fx.data, [...ITEMS, { id: "g1", category: "game" }], { ...META, count: 4 });
+    await fx.setPreCommitHook(['echo "hook says no" >&2', "exit 1"]);
+    const failedAgain = await fx.push();
+    assert.equal(failedAgain.code, 1, failedAgain.stdout);
+    assert.ok(failedAgain.stderr.includes("원래대로 되돌렸어요"), failedAgain.stderr);
+    assert.equal(await fx.localStatus(), "");
+    assert.equal(await readText(join(fx.app, "public", "releases.json")), before);
+    assert.equal(await exists(join(fx.app, "public")), true);
+    assert.equal((await fx.remoteLog()).length, 2);
+  });
+
+  test("--quiet 라도 커밋되지 않은 발행 파일을 되돌렸으면 '변경 없음' 한 줄로 줄이지 않고 그 경고를 남긴다", async () => {
+    const fx = await fixture();
+    assert.equal((await fx.push()).code, 0);
+    await writeFile(join(fx.app, "public", "releases.json"), "[]\n");
+
+    const result = await fx.push(["--quiet"]);
+    assert.equal(result.code, 0, result.stderr);
+    assert.ok(result.stderr.includes("커밋되지 않은 발행 파일 변경을 먼저 되돌려요"), `되돌린 흔적이 로그에 남아야 해요:\n${result.stdout}`);
+    assert.match(result.stdout.split("\n")[0], /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}\]$/, result.stdout);
+    assert.ok(result.stdout.includes("변경 없음"), result.stdout);
+    assert.equal(await fx.localStatus(), "");
+    assert.equal((await fx.remoteLog()).length, 2);
+
+    // 경고가 없으면 여전히 한 줄만 남긴다
+    const calm = await fx.push(["--quiet"]);
+    assert.equal(calm.code, 0, calm.stderr);
+    assert.equal(calm.stderr, "");
+    assert.equal(calm.stdout.trim().split("\n").length, 1, calm.stdout);
+  });
+
+  test("발행 파일을 되돌린 뒤에 멈추면 '아무것도 바꾸지 않았어요' 대신 되돌린 사실을 말한다", async () => {
+    const fx = await fixture();
+    assert.equal((await fx.push()).code, 0);
+    const clean = await fx.push([], { TROVE_OPS_DATA_DIR: join(fx.tmp, "missing") });
+    assert.equal(clean.code, 1, clean.stdout);
+    assert.ok(clean.stderr.includes("읽지 못했어요"), clean.stderr);
+    assert.ok(clean.stderr.includes("아무것도 바꾸지 않았어요"), clean.stderr);
+
+    await writeFile(join(fx.app, "public", "releases.json"), "[]\n");
+    const restored = await fx.push([], { TROVE_OPS_DATA_DIR: join(fx.tmp, "missing") });
+    assert.equal(restored.code, 1, restored.stdout);
+    assert.ok(restored.stderr.includes("먼저 되돌려요"), restored.stderr);
+    assert.ok(restored.stderr.includes("되돌린 것 외에는 바꾸지 않았어요"), restored.stderr);
+    assert.ok(!restored.stderr.includes("아무것도 바꾸지 않았어요"), `되돌린 뒤에 이렇게 말하면 거짓이에요:\n${restored.stderr}`);
+    assert.equal(await fx.localStatus(), "");
+
+    // 되돌린 뒤 로컬에 남의 미푸시 커밋이 걸려도 같다
+    await writeFile(join(fx.app, "public", "releases.json"), "[]\n");
+    await fx.git(["commit", "--quiet", "--allow-empty", "-m", "feat: 로컬 작업"]);
+    const foreign = await fx.push();
+    assert.equal(foreign.code, 1, foreign.stdout);
+    assert.ok(foreign.stderr.includes("푸시되지 않은 커밋"), foreign.stderr);
+    assert.ok(foreign.stderr.includes("되돌린 것 외에는 바꾸지 않았어요"), foreign.stderr);
+    assert.ok(!foreign.stderr.includes("아무것도 바꾸지 않았어요"), foreign.stderr);
+  });
+
+  // --wait 는 `git remote get-url` 이 GitHub 주소일 때만 돈다. url.<bare>.insteadOf 는 get-url 이 펼쳐 버려 쓸 수 없으니 PATH 의 git 대용품으로 답하고,
+  // GitHub API 는 `node --import` 로 globalThis.fetch 를 바꿔 흉내 낸다.
+  test("--wait: GitHub API 가 403 을 돌려주면 경고 한 줄만 남기고 바로 끝낸다 (5분 동안 20초마다 되묻지 않는다)", async () => {
+    const fx = await fixture();
+    const env = await fx.githubRemoteShim();
+    const stub = join(fx.tmp, "fetch-403.mjs");
+    await writeFile(stub, 'globalThis.fetch = async () => new Response("{}", { status: 403 });\n');
+
+    const started = Date.now();
+    const result = await sh(process.execPath, ["--import", stub, PUSH_SCRIPT, "--wait"], { cwd: fx.app, env });
+    assert.equal(result.code, 0, `${result.stdout}\n${result.stderr}`);
+    assert.ok(result.stdout.includes("https://github.com/test/repo/commit/"), result.stdout);
+    assert.ok(result.stdout.includes("배포 상태를 기다려요"), result.stdout);
+    assert.equal(count(result.stderr, "조회할 수 없어요"), 1, result.stderr);
+    assert.ok(result.stderr.includes("GitHub API 403"), result.stderr);
+    assert.ok(!result.stderr.includes("읽지 못했어요"), result.stderr);
+    assert.ok(!result.stdout.includes("배포가 끝나지 않았어요"), result.stdout);
+    assert.ok(Date.now() - started < 2000, "포기하는 응답이면 20초 대기 없이 끝나야 해요");
+    assert.equal((await fx.remoteLog()).length, 2);
+  });
+
+  test("--wait: 배포 상태가 success 면 '배포가 끝났어요', failure 면 종료 코드 1 로 멈춘다 (푸시는 이미 된 뒤)", async () => {
+    const fx = await fixture();
+    const env = await fx.githubRemoteShim();
+    const stubFor = async (state) => {
+      const path = join(fx.tmp, `fetch-${state}.mjs`);
+      await writeFile(
+        path,
+        [
+          "globalThis.fetch = async (url) =>",
+          "  new Response(",
+          "    JSON.stringify(",
+          '      String(url).includes("/statuses")',
+          `        ? [{ state: ${JSON.stringify(state)} }]`,
+          '        : [{ statuses_url: "https://api.github.com/repos/test/repo/deployments/1/statuses" }],',
+          "    ),",
+          "    { status: 200 },",
+          "  );",
+          "",
+        ].join("\n"),
+      );
+      return path;
+    };
+
+    const success = await sh(process.execPath, ["--import", await stubFor("success"), PUSH_SCRIPT, "--wait"], { cwd: fx.app, env });
+    assert.equal(success.code, 0, `${success.stdout}\n${success.stderr}`);
+    assert.ok(success.stdout.includes("배포 상태: success"), success.stdout);
+    assert.ok(success.stdout.includes("배포가 끝났어요"), success.stdout);
+    assert.equal(success.stderr, "");
+
+    await writeData(fx.data, [...ITEMS, { id: "m3", title: "앨범 셋", category: "music" }], { ...META, count: 4 });
+    const failure = await sh(process.execPath, ["--import", await stubFor("failure"), PUSH_SCRIPT, "--wait"], { cwd: fx.app, env });
+    assert.equal(failure.code, 1, failure.stdout);
+    assert.ok(failure.stdout.includes("배포 상태: failure"), failure.stdout);
+    assert.ok(failure.stderr.includes("배포가 실패했어요 (failure)"), failure.stderr);
+    assert.equal((await fx.remoteLog()).length, 3, "푸시는 배포를 기다리기 전에 이미 끝나 있어야 해요");
+  });
 });
 
 describe("push-releases: 푸시 못한 발행 커밋 뒤로 원격이 앞서 나간 경우", () => {
@@ -667,6 +879,41 @@ describe("push-releases: 푸시 못한 발행 커밋 뒤로 원격이 앞서 나
     assert.equal(await fx.localStatus(), "");
     assert.equal(await fx.git(["rev-parse", "HEAD"]), await fx.remoteHead());
     assert.ok(result.stdout.includes(await fx.remoteHead()), result.stdout);
+  });
+
+  test("손댄 다른 파일을 원격 커밋이 바꿨으면 rebase 하지 않고 그 파일 이름을 대며 멈춘다 (autostash 충돌 표식을 남기지 않는다)", async () => {
+    const fx = await fixture();
+    assert.equal((await fx.push()).code, 0);
+    // 푸시만 빠진 상태 + 원격에 src/note.txt 를 고친 커밋 + 같은 파일을 로컬에서 고치던 중
+    await fx.git(["--git-dir", fx.bare, "update-ref", "refs/heads/main", await fx.git(["rev-parse", "HEAD~1"])]);
+    await fx.pushFromOtherClone("docs: 메모 수정", (dir) => writeFile(join(dir, "src", "note.txt"), "다른 사람이 고친 내용\n"));
+    await writeFile(join(fx.app, "src", "note.txt"), "내가 고치던 내용\n");
+    const head = await fx.git(["rev-parse", "HEAD"]);
+
+    // `git rebase --autostash` 는 stash 를 되돌리다 충돌해도 0 으로 끝나므로, 그 전에 멈춰야 한다
+    const result = await fx.push();
+    assert.equal(result.code, 1, result.stdout);
+    assert.ok(result.stderr.includes("커밋하지 않은 수정"), result.stderr);
+    assert.ok(result.stderr.includes("src/note.txt"), result.stderr);
+    assert.ok(!result.stderr.includes("갈라져"), result.stderr);
+    assert.equal(await readText(join(fx.app, "src", "note.txt")), "내가 고치던 내용\n", "충돌 표식이 들어가면 안 돼요");
+    assert.equal(await fx.localStatus(), "M src/note.txt");
+    assert.equal(await fx.git(["stash", "list"]), "", "autostash 가 남으면 안 돼요");
+    assert.equal(await fx.git(["rev-parse", "HEAD"]), head, "rebase 하지 않았어야 해요");
+    assert.equal((await fx.remoteLog()).length, 2);
+
+    // 같은 상황을 dry-run 도 같은 메시지로 예측한다
+    const dry = await fx.push(["--dry-run"]);
+    assert.equal(dry.code, 1, dry.stdout);
+    assert.ok(dry.stderr.includes("src/note.txt"), dry.stderr);
+    assert.equal(await readText(join(fx.app, "src", "note.txt")), "내가 고치던 내용\n");
+
+    // 그 수정을 치우면 다음 실행이 올려 푸시한다(같은 메시지가 영구 정체로 이어지지 않는다)
+    await fx.git(["stash", "push", "--quiet", "--", "src/note.txt"]);
+    const retried = await fx.push();
+    assert.equal(retried.code, 0, `${retried.stdout}\n${retried.stderr}`);
+    assert.equal((await fx.remoteLog()).length, 3);
+    assert.equal(await fx.git(["rev-parse", "HEAD"]), await fx.remoteHead());
   });
 
   test("남의 커밋이 섞여 있으면 갈라진 것으로 보고 멈춘다", async () => {

@@ -16,7 +16,8 @@ let result;
 try {
   result = await pullReleases({ root, sourceDir: opsDataDir(root), targetDir: resolve(root, "public") });
 } catch (cause) {
-  console.error(cause instanceof Error ? cause.message : String(cause));
+  // pullReleases 는 public/ 에 쓰기 전에 던지므로 data:pull 은 이렇게 말할 수 있다(data:push 는 그 전에 발행 파일을 되돌렸을 수 있어 따로 말한다).
+  console.error(`${cause instanceof Error ? cause.message : String(cause)} 아무것도 바꾸지 않았어요.`);
   process.exit(1);
 }
 for (const warning of result.warnings) console.warn(warning);

@@ -23,7 +23,7 @@
 import { execFile } from "node:child_process";
 import { rmSync } from "node:fs";
 import { access, open, readFile, realpath, rm, rmdir, stat, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { relative, resolve } from "node:path";
 import { promisify } from "node:util";
 import {
   appRoot,
@@ -136,14 +136,17 @@ for (const [signal, code] of Object.entries(SIGNAL_EXIT_CODES)) {
   });
 }
 
-/** 잠금에 적힌 pid 가 확실히 끝난 프로세스인지. 권한이 없어 알 수 없으면(EPERM) 살아 있는 것으로 본다. pid 0·음수는 프로세스 그룹을 뜻하므로 보지 않는다. */
-function isDeadPid(pid) {
-  if (!Number.isInteger(pid) || pid <= 0) return false;
+/**
+ * 잠금에 적힌 pid 의 상태. "dead" = 확실히 끝남(ESRCH), "alive" = 신호를 보낼 수 있는 살아 있는 프로세스,
+ * "unknown" = pid 가 없거나 권한이 없어(EPERM) 알 수 없음. pid 0·음수는 프로세스 그룹을 뜻하므로 보지 않는다.
+ */
+function pidState(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return "unknown";
   try {
     process.kill(pid, 0);
-    return false;
+    return "alive";
   } catch (cause) {
-    return cause?.code === "ESRCH";
+    return cause?.code === "ESRCH" ? "dead" : "unknown";
   }
 }
 
@@ -163,14 +166,16 @@ async function acquireLock(gitDir) {
       if (cause?.code !== "EEXIST") throw cause;
     }
 
-    // 누가 들고 있는 잠금이다. 그 pid 가 이미 끝났거나(강제 종료·재부팅·터미널 닫힘) 30분 넘게 묵은 것은 죽은 실행이 남긴 것으로 보고 치운다.
+    // 누가 들고 있는 잠금이다. 그 pid 가 이미 끝났으면(강제 종료·재부팅·터미널 닫힘) 치우고, pid 를 알 수 없으면 30분 넘게 묵은 것만 죽은 실행이 남긴 것으로 보고 치운다.
+    // 살아 있는 실행의 잠금은 오래됐어도 치우지 않는다 — 치우면 두 실행이 같은 저장소를 동시에 만지고, 먼저 돌던 실행이 끝날 때 새 잠금까지 지운다.
     let info = {};
     try {
       info = JSON.parse(await readFile(lockPath, "utf8"));
     } catch {
       // 내용이 깨졌으면 파일 시각으로 판단
     }
-    if (isDeadPid(info?.pid)) {
+    const state = pidState(info?.pid);
+    if (state === "dead") {
       warn(`끝난 실행(pid ${info.pid})이 남긴 잠금을 치웠어요: ${lockPath}`);
       await rm(lockPath, { force: true });
       continue;
@@ -184,12 +189,13 @@ async function acquireLock(gitDir) {
         throw cause;
       }
     }
-    if (Date.now() - startedAt >= LOCK_STALE_MS) {
+    const stale = Date.now() - startedAt >= LOCK_STALE_MS;
+    if (stale && state !== "alive") {
       warn(`30분 넘게 남아 있던 잠금을 치웠어요: ${lockPath}`);
       await rm(lockPath, { force: true });
       continue;
     }
-    const holder = `pid ${info?.pid ?? "?"}, ${formatSeoulTime(new Date(startedAt))} 시작`;
+    const holder = `pid ${info?.pid ?? "?"}, ${formatSeoulTime(new Date(startedAt))} 시작${stale ? ", 30분 넘게 진행 중" : ""}`;
     // 주기 실행은 다음 주기에 다시 돌므로(예: 사람이 돌린 --wait 가 끝나길 기다리는 중) 실패로 치지 않는다.
     if (options.quiet) throw new Skip(`다른 발행 반영이 진행 중이라 건너뛰어요 (${holder}) (${formatSeoulTime()})`);
     throw new Stop(
@@ -235,6 +241,13 @@ const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
 // ---------- 단계 ----------
 async function preflight() {
+  // 앱 폴더가 없으면 git 을 띄우는 단계에서 ENOENT 가 나서 run() 이 "git 명령을 찾지 못했어요" 로 잘못 안내한다. 먼저 폴더부터 확인한다.
+  try {
+    await stat(root);
+  } catch (cause) {
+    if (cause?.code !== "ENOENT") throw cause;
+    throw new Stop(`앱 폴더가 없어요: ${root} (TROVE_APP_ROOT 를 확인해 주세요)`);
+  }
   const inside = await run("git", ["rev-parse", "--is-inside-work-tree"]);
   if (!inside.ok || inside.stdout.trim() !== "true") {
     throw new Stop(`앱 폴더가 git 저장소가 아니에요: ${root}`);
@@ -273,10 +286,24 @@ async function preflight() {
   await acquireLock(gitDir);
 }
 
+/** main() 이 발행 파일 두 개를 HEAD 상태로 되돌렸는지. 그 뒤에 멈추는 메시지는 "아무것도 바꾸지 않았어요" 라고 할 수 없다. */
+let restoredStale = false;
+const untouched = () =>
+  restoredStale ? "발행 파일 두 개를 HEAD 상태로 되돌린 것 외에는 바꾸지 않았어요." : "아무것도 바꾸지 않았어요.";
+
 function divergedStop(detail = "") {
   return new Stop(
-    `로컬 '${branch}' 브랜치가 원격과 갈라져 있어요(원격에 없는 커밋이 있거나 충돌). 사람이 직접 확인해야 해요. 아무것도 바꾸지 않았어요.\n` +
+    `로컬 '${branch}' 브랜치가 원격과 갈라져 있어요(원격에 없는 커밋이 있거나 충돌). 사람이 직접 확인해야 해요. ${untouched()}\n` +
       `  git status\n  git log --oneline ${remote}/${branch}..HEAD${detail ? `\n${detail}` : ""}`,
+  );
+}
+
+/** 커밋하지 않은 로컬 수정(또는 추적 안 된 파일)을 원격의 새 커밋이 같은 파일에서 건드려 자동으로 맞출 수 없을 때. */
+function uncommittedOverlapStop(files, detail = "") {
+  return new Stop(
+    `앱 폴더에 아직 커밋하지 않은 수정이 있고(${files.join(", ") || "git status 참고"}), 원격의 새 커밋이 같은 파일을 바꿔서 자동으로 맞출 수 없어요. ` +
+      `${untouched()} 그 수정을 커밋하거나 치운(git stash) 뒤 다시 실행해 주세요.\n` +
+      `  git status${detail ? `\n${detail}` : ""}`,
   );
 }
 
@@ -284,6 +311,12 @@ function divergedStop(detail = "") {
 async function isAncestor(a, b) {
   return (await run("git", ["merge-base", "--is-ancestor", a, b])).ok;
 }
+
+/**
+ * 변경·건수를 비교할 기준 커밋. 보통 HEAD.
+ * dry-run 이 fast-forward 를 건너뛰었을 때만 FETCH_HEAD — 실제 실행이라면 그 커밋이 HEAD 가 돼 있을 테니, 예측도 거기 맞춰야 실제 실행과 같은 답이 나온다.
+ */
+let baseRef = "HEAD";
 
 /**
  * git pull --ff-only 와 같다. 로컬이 갈라져 있으면 사람이 봐야 하므로 멈춘다.
@@ -304,11 +337,14 @@ async function syncWithRemote() {
   if (options.dryRun) {
     if (canFastForward) {
       say(`[dry-run] 원격에 새 커밋이 있어요. 실제 실행이라면 로컬 '${branch}' 을 ${remote}/${branch} 으로 fast-forward 하지만, 지금은 움직이지 않았어요.`);
+      await stopIfUncommittedOverlap(); // 실제 실행이라면 git 이 ff 를 거절했을 상황을 같은 메시지로 미리 알린다
+      baseRef = "FETCH_HEAD"; // 아래 예측(변경·건수)은 fast-forward 된 뒤 기준으로 한다
       return;
     }
     const ahead = await unpushedCommits();
     if (ahead.length && ahead.every(isReleaseCommit)) {
       say(`[dry-run] 지난 실행이 푸시하지 못한 발행 커밋 ${ahead.length}개 뒤로 원격이 앞서 있어요. 실제 실행이라면 원격 위로 올리지만, 지금은 움직이지 않았어요.`);
+      await stopIfUncommittedOverlap();
       return;
     }
     throw divergedStop();
@@ -325,11 +361,7 @@ async function syncWithRemote() {
         .split("\n")
         .filter((line) => line.startsWith("\t"))
         .map((line) => line.trim());
-      throw new Stop(
-        `앱 폴더에 아직 커밋하지 않은 수정이 있고(${files.join(", ") || "git status 참고"}), 원격의 새 커밋이 같은 파일을 바꿔서 자동으로 맞출 수 없어요. ` +
-          "아무것도 바꾸지 않았어요. 그 수정을 커밋하거나 치운(git stash) 뒤 다시 실행해 주세요.\n" +
-          `  git status\n${stderr}`,
-      );
+      throw uncommittedOverlapStop(files, stderr);
     }
     throw divergedStop(stderr);
   }
@@ -354,11 +386,11 @@ async function unpushedCommits() {
 }
 
 /**
- * HEAD 에 커밋된 발행 건수(= 지금 배포돼 있거나 곧 푸시될 것). 작업 폴더의 파일은 `npm run data:pull` 이나
+ * 기준 커밋(baseRef, 보통 HEAD)에 커밋된 발행 건수(= 지금 배포돼 있거나 곧 푸시될 것). 작업 폴더의 파일은 `npm run data:pull` 이나
  * 중간에 죽은 실행이 이미 덮어썼을 수 있어 급감 판단의 기준으로 쓰지 않는다. 커밋된 적이 없으면 0.
  */
 async function committedCount() {
-  const shown = await run("git", ["show", `HEAD:./${DATA_PATHS[0]}`]);
+  const shown = await run("git", ["show", `${baseRef}:./${DATA_PATHS[0]}`]);
   if (!shown.ok) return 0;
   try {
     const items = JSON.parse(shown.stdout);
@@ -377,15 +409,54 @@ async function exists(path) {
   }
 }
 
-/** 두 발행 파일 중 실제로 달라진 것만. [{ status: "??" | " M" | "A " | ..., path }] */
-async function changedDataPaths() {
-  // 첫 글자가 공백일 수 있어(" M path") trim 하지 않고 줄 단위로 읽는다.
-  const result = await run("git", ["status", "--porcelain", "--untracked-files=all", "--", ...DATA_PATHS]);
+/** 커밋하지 않은 변경(추적 안 된 파일 포함). pathspec 을 주면 그 파일들만. [{ status: "??" | " M" | "A " | ..., path }] */
+async function changedPaths(pathspec = []) {
+  // 첫 글자가 공백일 수 있어(" M path") git() 처럼 trim 하지 않고 줄 단위로 읽는다.
+  const result = await run("git", ["status", "--porcelain", "--untracked-files=all", "--", ...pathspec]);
   if (!result.ok) throw new Stop(`변경 사항을 확인하지 못했어요.\n${result.stderr.trim()}`);
   return result.stdout
     .split("\n")
     .filter((line) => line.length > 3)
     .map((line) => ({ status: line.slice(0, 2), path: line.slice(3) }));
+}
+
+/** 두 발행 파일 중 실제로 달라진 것만(HEAD/index 기준). */
+const changedDataPaths = () => changedPaths(DATA_PATHS);
+
+/**
+ * dry-run 이 fast-forward 를 건너뛴 경우: 복사한 발행 파일을 HEAD 가 아니라 원격 커밋(ref)과 비교한다.
+ * 실제 실행이라면 fast-forward 뒤의 작업 폴더가 그 커밋과 같았을 테니, pullReleases 가 쓴 파일(written)만 다를 수 있다.
+ * git status 는 index/HEAD 기준이라 쓸 수 없고, `git diff <ref>` 도 index 에 없는(추적 안 된) 파일은 보지 않아 blob 해시로 비교한다.
+ * 읽기만 한다(`hash-object` 는 -w 없이는 아무것도 쓰지 않는다).
+ */
+async function changedDataPathsAgainst(ref, written) {
+  const changes = [];
+  for (const path of written) {
+    const inRef = await run("git", ["rev-parse", "--verify", "--quiet", `${ref}:./${path}`]);
+    const inTree = await git(["hash-object", "--", path], "발행 파일의 해시를 구하지 못했어요.");
+    if (inRef.ok && inRef.stdout.trim() === inTree) continue;
+    changes.push({ status: inRef.ok ? " M" : "??", path });
+  }
+  return changes;
+}
+
+/**
+ * 커밋하지 않은 변경 가운데 받아 둔 FETCH_HEAD 의 새 커밋이 건드리는 파일.
+ * 발행 파일 두 개는 보지 않는다 — main() 이 미리 되돌리므로(dry-run 은 그대로 두지만 실제 실행이라면 되돌렸을 것이므로) 여기 걸리는 것은 사람이 손댄 다른 파일이다.
+ */
+async function uncommittedOverlap() {
+  const dirty = (await changedPaths()).map((change) => change.path).filter((path) => !DATA_PATHS.includes(path));
+  if (!dirty.length) return [];
+  const incoming = new Set(
+    (await git(["diff", "--name-only", "HEAD...FETCH_HEAD"], "원격의 새 커밋이 바꾼 파일을 확인하지 못했어요.")).split("\n"),
+  );
+  return dirty.filter((path) => incoming.has(path));
+}
+
+/** 커밋하지 않은 수정이 원격의 새 커밋과 같은 파일이면 손대기 전에 멈춘다(ff-only 병합에서 git 이 거절하는 것과 같은 기준). */
+async function stopIfUncommittedOverlap() {
+  const overlap = await uncommittedOverlap();
+  if (overlap.length) throw uncommittedOverlapStop(overlap);
 }
 
 /** 이 스크립트가 만든 public/ 이면(비어 있으면) 지운다. */
@@ -449,12 +520,24 @@ async function commit(changes, message) {
  * 로컬 발행 커밋이 있어 ff-only 로는 합쳐질 수 없으니 rebase(자동 stash)를 쓴다. 겹치면 되돌리고 멈춘다.
  */
 async function rebaseOntoFetched() {
+  // --autostash 는 stash 를 되돌려 놓다 충돌해도 성공(0)으로 끝나고, 충돌 표식이 든 파일과 stash 만 남긴다.
+  // ff-only 경로와 같은 기준으로, 커밋하지 않은 수정이 원격의 새 커밋과 같은 파일이면 손대기 전에 멈춘다.
+  await stopIfUncommittedOverlap();
   const rebased = await run("git", ["rebase", "--quiet", "--autostash", "FETCH_HEAD"]);
   if (!rebased.ok) {
     await run("git", ["rebase", "--abort"]);
     throw new Stop(
       "원격 변경과 겹쳐서 자동으로 합치지 못했어요. 커밋은 로컬에 있어요. 사람이 확인해 주세요:\n" +
         `  git pull --rebase ${remote} ${branch}\n${rebased.stderr.trim()}`,
+    );
+  }
+  // 위 검사를 빠져나간 경우의 안전망. 수정은 stash 에 그대로 있으니 작업 폴더만 HEAD 로 되돌리고 사람에게 넘긴다.
+  if (/autostash resulted in conflicts/i.test(rebased.stderr)) {
+    await run("git", ["reset", "--quiet", "--hard", "HEAD"]);
+    throw new Stop(
+      "원격 변경과 커밋하지 않은 수정이 겹쳐서 자동으로 맞추지 못했어요. 그 수정은 git stash 에 들어 있어요(git stash pop 으로 꺼내 충돌을 풀어 주세요). " +
+        "발행 커밋은 로컬에 있고, 다음 실행에서 푸시해요.\n" +
+        `  git stash list\n${rebased.stderr.trim()}`,
     );
   }
 }
@@ -590,22 +673,31 @@ async function publish({ ahead, previousCount, publicExisted }) {
   } catch (cause) {
     // 발행물이 없거나 깨진 것은 예상 범위의 멈춤이다. 스택 대신 이유와 할 일만 보여 준다.
     throw new Stop(
-      `${cause instanceof Error ? cause.message : cause}\n` +
+      `${cause instanceof Error ? cause.message : cause} ${untouched()}\n` +
         "폴더가 다른 곳이면 TROVE_OPS_DATA_DIR=/path npm run data:push:install 로 에이전트를 다시 등록해 주세요.",
     );
   }
-  const changes = await changedDataPaths();
+  // dry-run 이 fast-forward 를 건너뛰었으면 HEAD 가 아니라 원격 커밋 기준으로 본다(실제 실행과 같은 답을 내기 위해).
+  const changes =
+    baseRef === "HEAD"
+      ? await changedDataPaths()
+      : await changedDataPathsAgainst(
+          baseRef,
+          [pulled.targetItems, pulled.targetMeta].filter(Boolean).map((path) => relative(root, path)),
+        );
 
   if (changes.length === 0 && ahead.length === 0) {
-    if (options.quiet) {
+    // --quiet 라도 이번 실행이 경고를 남겼으면(예: 커밋되지 않은 발행 파일을 되돌림) 한 줄로 줄이지 않고 모아 둔 출력을 전부 남긴다.
+    if (options.quiet && !pending.some(([level]) => level === "warn")) {
       pending.length = 0;
       buffering = false;
       console.log(`변경 없음 (${formatSeoulTime()})`);
-    } else {
-      for (const warning of pulled.warnings) warn(warning);
-      say(formatPullSummary(pulled));
-      say("변경 없음: public/ 의 발행물이 이미 최신이에요.");
+      return;
     }
+    flush();
+    for (const warning of pulled.warnings) warn(warning);
+    say(formatPullSummary(pulled));
+    say("변경 없음: public/ 의 발행물이 이미 최신이에요.");
     return;
   }
 
@@ -636,7 +728,18 @@ async function publish({ ahead, previousCount, publicExisted }) {
       say("[dry-run] 실제로는 커밋·푸시하지 않았고, public/ 의 발행 파일도 원래대로 되돌려요.");
       return;
     }
-    sha = await commit(changes, message);
+    try {
+      sha = await commit(changes, message);
+    } catch (cause) {
+      // `git add` 가 이미 지나갔을 수 있어, add 전에 읽어 둔 changes 가 아니라 지금 상태를 다시 읽어 되돌린다
+      // (add 전 상태로는 스테이징이 풀리지 않고, " M" 은 checkout 이 인덱스의 새 내용을 다시 쓴다).
+      try {
+        await restore(await changedDataPaths(), publicExisted);
+      } catch {
+        // 되돌리기까지 실패하면 다음 실행의 stale 정리("커밋되지 않은 발행 파일 변경을 먼저 되돌려요")에 맡긴다
+      }
+      throw cause instanceof Stop ? new Stop(`${cause.message}\npublic/ 의 발행 파일은 원래대로 되돌렸어요.`) : cause;
+    }
     say(`커밋 ${sha.slice(0, 7)}: ${message}`);
   }
 
@@ -662,6 +765,7 @@ async function main() {
     } else {
       warn(`커밋되지 않은 발행 파일 변경을 먼저 되돌려요: ${names}`);
       await restore(stale, true);
+      restoredStale = true;
     }
   }
   await syncWithRemote();
@@ -672,7 +776,7 @@ async function main() {
   if (foreign.length) {
     throw new Stop(
       `로컬 '${branch}' 에 아직 푸시되지 않은 커밋이 ${ahead.length}개 있는데, 이 스크립트가 만든 발행 커밋이 아니에요. ` +
-        "사람이 직접 푸시하거나 정리한 뒤에 다시 실행해 주세요. 아무것도 바꾸지 않았어요.\n" +
+        `사람이 직접 푸시하거나 정리한 뒤에 다시 실행해 주세요. ${untouched()}\n` +
         foreign.map((commitInfo) => `  ${commitInfo.sha.slice(0, 7)} ${commitInfo.subject}`).join("\n"),
     );
   }

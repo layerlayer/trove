@@ -232,6 +232,9 @@ async function main() {
     else if (lastExit !== null) lines.push(`마지막 실행 종료 코드: ${lastExit}${lastExit === 0 ? " (정상)" : " (로그를 확인해 주세요)"}`);
   } else if (hasPlist && !(await run("launchctl", ["print", domain])).ok) {
     lines.push("맥 화면에 로그인한 세션이 없어 확인할 수 없어요 (ssh 로 접속 중?). 로그인한 터미널에서 다시 확인해 주세요.");
+  } else if (hasPlist) {
+    // GUI 세션은 있는데 작업만 올라와 있지 않다: 로그인 항목 > 백그라운드에서 껐거나(README 가 install 재실행을 안내), bootstrap 이 끝나지 않은 채 plist 만 남은 경우.
+    lines.push("설정 파일은 있지만 launchd 에 올라와 있지 않아요(로그인 항목 > 백그라운드에서 껐거나 등록이 끝나지 않은 경우). 다시 켜려면: npm run data:push:install");
   }
   if (hasPlist) {
     const program = programFromPlist(await readFile(plistPath, "utf8"));
