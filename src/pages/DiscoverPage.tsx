@@ -5,7 +5,6 @@ import { AppHeader } from "../components/AppHeader";
 import { AuthSheet } from "../components/AuthSheet";
 import { BottomNav } from "../components/BottomNav";
 import { BottomSheet } from "../components/BottomSheet";
-import { NotificationList } from "../components/NotificationList";
 import { ReleaseListItem } from "../components/ReleaseListItem";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
@@ -13,11 +12,12 @@ import { categories } from "../data/categories";
 import { useReleases } from "../data/ReleaseDataContext";
 import { daysUntil } from "../lib/date";
 import { track } from "../lib/analytics";
+import { useUnreadNotifications } from "../lib/useUnreadNotifications";
 import type { Category, ReleaseItem } from "../types";
 
 type Period = "all" | "week" | "month" | "tba";
 type Sort = "release" | "popular" | "new";
-type DiscoverSheet = "notifications" | "filters" | "saved" | null;
+type DiscoverSheet = "filters" | "saved" | null;
 
 const periodLabels: Record<Period, string> = {
   all: "전체 기간",
@@ -42,7 +42,8 @@ function matchesPeriod(item: ReleaseItem, period: Period) {
 
 export function DiscoverPage() {
   const navigate = useNavigate();
-  const { state, toggleFavorite, markNotificationsRead } = useTrove();
+  const { state, toggleFavorite } = useTrove();
+  const unreadNotifications = useUnreadNotifications();
   const { releases } = useReleases();
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"all" | Category>("all");
@@ -112,11 +113,8 @@ export function DiscoverPage() {
     <main className="app-page discover-page">
       <StatusBar />
       <AppHeader
-        unreadCount={state.unreadNotifications}
-        onNotifications={() => {
-          markNotificationsRead();
-          setSheet("notifications");
-        }}
+        unreadCount={unreadNotifications}
+        onNotifications={() => navigate("/notifications")}
       />
 
       <section className="page-heading discover-heading">
@@ -198,15 +196,6 @@ export function DiscoverPage() {
       </section>
 
       <BottomNav active="discover" />
-
-      <BottomSheet
-        open={sheet === "notifications"}
-        title="새로운 소식"
-        description="날짜 변경과 임박 알림을 놓치지 마세요."
-        onClose={() => setSheet(null)}
-      >
-        <NotificationList />
-      </BottomSheet>
 
       <BottomSheet
         open={sheet === "filters"}

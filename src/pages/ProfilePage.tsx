@@ -2,9 +2,12 @@ import {
   Bell,
   BellRing,
   ChevronRight,
+  FileText,
+  Info,
   LogOut,
   Mail,
   RotateCcw,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   UserCircle,
@@ -15,14 +18,14 @@ import { AppHeader } from "../components/AppHeader";
 import { AuthSheet } from "../components/AuthSheet";
 import { BottomNav } from "../components/BottomNav";
 import { BottomSheet } from "../components/BottomSheet";
-import { NotificationList } from "../components/NotificationList";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
 import { useReleases } from "../data/ReleaseDataContext";
 import { track } from "../lib/analytics";
+import { useUnreadNotifications } from "../lib/useUnreadNotifications";
 import type { AlertPreset } from "../types";
 
-type ProfileSheet = "notifications" | "logout" | "reset" | null;
+type ProfileSheet = "logout" | "reset" | null;
 
 const defaultAlertOptions: Array<{ id: AlertPreset; label: string }> = [
   { id: "D-7", label: "일주일 전" },
@@ -38,11 +41,11 @@ export function ProfilePage() {
     setDefaultAlerts,
     setWeeklyDigest,
     setNotificationPermission,
-    markNotificationsRead,
     resetDemo,
   } = useTrove();
   const { interests, releases } = useReleases();
   const [sheet, setSheet] = useState<ProfileSheet>(null);
+  const unreadNotifications = useUnreadNotifications();
   const [authOpen, setAuthOpen] = useState(false);
 
   const selectedInterests = interests.filter((interest) => state.interests.includes(interest.id));
@@ -75,11 +78,8 @@ export function ProfilePage() {
     <main className="app-page profile-page">
       <StatusBar />
       <AppHeader
-        unreadCount={state.unreadNotifications}
-        onNotifications={() => {
-          markNotificationsRead();
-          setSheet("notifications");
-        }}
+        unreadCount={unreadNotifications}
+        onNotifications={() => navigate("/notifications")}
       />
 
       <section className="page-heading profile-heading">
@@ -161,27 +161,47 @@ export function ProfilePage() {
         </label>
       </section>
 
-      {state.user ? (
-        <section className="settings-section profile-danger-zone">
-          <h2>계정</h2>
+      <section className="settings-section">
+        <h2>정보</h2>
+        <button className="settings-row" type="button" onClick={() => navigate("/notifications")}>
+          <span className="settings-row__icon"><BellRing size={20} /></span>
+          <span className="settings-row__copy"><strong>알림 센터</strong><small>{unreadNotifications > 0 ? `새 소식 ${unreadNotifications}개` : "담아 둔 기다림의 D-7·D-1·D-Day 소식"}</small></span>
+          <ChevronRight size={20} />
+        </button>
+        <button className="settings-row" type="button" onClick={() => navigate("/about")}>
+          <span className="settings-row__icon"><Info size={20} /></span>
+          <span className="settings-row__copy"><strong>Trove 소개</strong><small>어떻게 모으고, 왜 이미지가 없는지</small></span>
+          <ChevronRight size={20} />
+        </button>
+        <button className="settings-row" type="button" onClick={() => navigate("/terms")}>
+          <span className="settings-row__icon"><FileText size={20} /></span>
+          <span className="settings-row__copy"><strong>이용약관</strong><small>검토 전 초안</small></span>
+          <ChevronRight size={20} />
+        </button>
+        <button className="settings-row" type="button" onClick={() => navigate("/privacy")}>
+          <span className="settings-row__icon"><ShieldCheck size={20} /></span>
+          <span className="settings-row__copy"><strong>개인정보 처리방침</strong><small>검토 전 초안</small></span>
+          <ChevronRight size={20} />
+        </button>
+      </section>
+
+      <section className="settings-section profile-danger-zone">
+        <h2>{state.user ? "계정" : "데이터"}</h2>
+        {state.user ? (
           <button className="settings-row" type="button" onClick={() => setSheet("logout")}>
             <span className="settings-row__icon"><LogOut size={20} /></span>
             <span className="settings-row__copy"><strong>로그아웃</strong><small>이 기기의 세션을 종료합니다.</small></span>
             <ChevronRight size={20} />
           </button>
-          <button className="settings-row is-danger" type="button" onClick={() => setSheet("reset")}>
-            <span className="settings-row__icon"><RotateCcw size={20} /></span>
-            <span className="settings-row__copy"><strong>MVP 데이터 초기화</strong><small>관심사와 저장 목록을 모두 지웁니다.</small></span>
-            <ChevronRight size={20} />
-          </button>
-        </section>
-      ) : null}
+        ) : null}
+        <button className="settings-row is-danger" type="button" onClick={() => setSheet("reset")}>
+          <span className="settings-row__icon"><RotateCcw size={20} /></span>
+          <span className="settings-row__copy"><strong>MVP 데이터 초기화</strong><small>관심사·담은 기다림·알림 설정·사용 기록을 이 기기에서 지웁니다.</small></span>
+          <ChevronRight size={20} />
+        </button>
+      </section>
 
       <BottomNav active="profile" />
-
-      <BottomSheet open={sheet === "notifications"} title="새로운 소식" description="기다리는 일정의 중요한 변화만 모았어요." onClose={() => setSheet(null)}>
-        <NotificationList />
-      </BottomSheet>
 
       <BottomSheet open={sheet === "logout"} title="로그아웃할까요?" description="이 브라우저의 저장 목록은 유지되며, 다시 로그인하면 이어볼 수 있어요." onClose={() => setSheet(null)}>
         <button className="danger-button sheet-button" type="button" onClick={() => { signOut(); setSheet(null); }}>로그아웃</button>

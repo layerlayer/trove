@@ -4,9 +4,9 @@ import { useNavigate } from "react-router-dom";
 import { AppHeader } from "../components/AppHeader";
 import { BottomNav } from "../components/BottomNav";
 import { BottomSheet } from "../components/BottomSheet";
-import { NotificationList } from "../components/NotificationList";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
+import { useUnreadNotifications } from "../lib/useUnreadNotifications";
 import { ReleaseThumb } from "../components/Media";
 import { useReleases } from "../data/ReleaseDataContext";
 import {
@@ -19,7 +19,7 @@ import {
 import type { ReleaseItem } from "../types";
 
 type CalendarView = "month" | "week";
-type CalendarSheet = "notifications" | "menu" | "month-picker" | null;
+type CalendarSheet = "menu" | "month-picker" | null;
 
 const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -67,7 +67,8 @@ function EventRow({ item, onOpen }: { item: ReleaseItem; onOpen: () => void }) {
 
 export function CalendarPage() {
   const navigate = useNavigate();
-  const { state, markNotificationsRead, resetDemo } = useTrove();
+  const { state, resetDemo } = useTrove();
+  const unreadNotifications = useUnreadNotifications();
   const { releases } = useReleases();
   const firstTracked =
     releases.find((item) => state.favorites.includes(item.id) && item.releaseAt) ??
@@ -141,11 +142,8 @@ export function CalendarPage() {
     <main className="app-page calendar-page">
       <StatusBar />
       <AppHeader
-        unreadCount={state.unreadNotifications}
-        onNotifications={() => {
-          markNotificationsRead();
-          setSheet("notifications");
-        }}
+        unreadCount={unreadNotifications}
+        onNotifications={() => navigate("/notifications")}
         onMenu={() => setSheet("menu")}
       />
 
@@ -246,15 +244,6 @@ export function CalendarPage() {
       </section>
 
       <BottomNav active="trove" />
-
-      <BottomSheet
-        open={sheet === "notifications"}
-        title="새로운 소식"
-        description="날짜 변경과 임박 알림을 놓치지 마세요."
-        onClose={() => setSheet(null)}
-      >
-        <NotificationList />
-      </BottomSheet>
 
       <BottomSheet
         open={sheet === "month-picker"}

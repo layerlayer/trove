@@ -1,0 +1,144 @@
+/* 아티스트·브랜드 페이지 (/entity/:slug). 전역 규칙은 styles.css, 여기는 entity- 접두 클래스만 */
+
+.entity-page {
+  padding-bottom: calc(40px + env(safe-area-inset-bottom));
+}
+
+.entity-page .entity-header {
+  position: sticky;
+  top: 0;
+}
+
+/* 못 찾은 아티스트: 헤더는 위에 두고 안내만 가운데로 */
+.entity-page--missing .empty-state {
+  min-height: calc(100dvh - 104px - 120px);
+  padding: 32px var(--page-gutter);
+}
+
+.entity-page--missing .empty-state .primary-button {
+  margin-top: 14px;
+}
+
+/* 히어로: 글자 타일 + 이름 + 카테고리 + 건수 */
+.entity-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px var(--page-gutter) 22px;
+  text-align: center;
+}
+
+.entity-hero__tile {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 18px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 28px;
+}
+
+/* InterestImage 는 둥근 타일(999px)로 그리므로 여기서는 모서리를 28px 로 맞춘다 */
+.entity-hero__tile .media-placeholder {
+  border-radius: 27px;
+}
+
+.entity-hero__tile .media-placeholder__glyph {
+  font-size: 44px;
+}
+
+/* 글자 타일 색: 일정이 가장 많은 카테고리를 따른다(styles.css 의 카테고리 색과 같은 값) */
+.entity-hero__tile[data-category="music"] { --tile-tint: rgba(205, 255, 25, 0.26); }
+.entity-hero__tile[data-category="concert"] { --tile-tint: rgba(255, 122, 89, 0.3); }
+.entity-hero__tile[data-category="game"] { --tile-tint: rgba(37, 110, 244, 0.34); }
+.entity-hero__tile[data-category="movie"] { --tile-tint: rgba(214, 61, 74, 0.3); }
+.entity-hero__tile[data-category="lifestyle"] { --tile-tint: rgba(177, 184, 190, 0.26); }
+
+.entity-hero .eyebrow {
+  margin-bottom: 6px;
+}
+
+.entity-hero h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 850;
+  letter-spacing: -0.8px;
+  line-height: 1.2;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.entity-hero__categories {
+  margin: 8px 0 0;
+  color: var(--gray-30);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.entity-hero__stats {
+  margin: 4px 0 0;
+  color: var(--gray-50);
+  font-size: 13px;
+}
+
+/* 팔로우 */
+.entity-follow {
+  padding: 0 var(--page-gutter);
+}
+
+.entity-follow > button {
+  width: 100%;
+  height: 48px;
+  gap: 6px;
+  font-size: 16px;
+}
+
+.entity-follow__hint {
+  margin: 10px 0 0;
+  color: var(--gray-50);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* 일정 목록 */
+.entity-section {
+  padding: 28px var(--page-gutter) 0;
+}
+
+.entity-section h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  margin: 0 0 12px;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+}
+
+.entity-section h2 small {
+  color: var(--gray-50);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.entity-section__empty {
+  margin: 0;
+  padding: 22px 18px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 18px;
+  color: var(--gray-40);
+  font-size: 14px;
+  line-height: 1.55;
+  text-align: center;
+  word-break: keep-all;
+}
+
+.entity-section__more {
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+.entity-section__more .text-button {
+  width: 100%;
+}

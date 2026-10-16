@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { clearAnalytics } from "../lib/analytics";
 import type { AlertPreset, TroveState, TroveUser } from "../types";
 
 /** v3: 발행물 기반 id(관심사 category:/entity:, 출시 항목은 콘솔 id)로 바뀌어 v2 의 관심사·담기·알림은 이어받지 않는다 */
@@ -18,7 +19,8 @@ const initialState: TroveState = {
   interests: [],
   favorites: [],
   alerts: {},
-  unreadNotifications: 3,
+  notificationsSeenAt: null,
+  notificationsSeenIds: [],
   user: null,
   settings: {
     defaultAlerts: ["D-1", "D-Day"],
@@ -34,7 +36,8 @@ interface TroveContextValue {
   completeOnboarding: () => void;
   toggleFavorite: (id: string) => void;
   setAlertPresets: (id: string, presets: AlertPreset[]) => void;
-  markNotificationsRead: () => void;
+  /** 알림 센터에서 본 울린 알림 id 들을 기록한다(지난 것은 같이 정리) */
+  markNotificationsRead: (ids: string[]) => void;
   signIn: (email: string, provider?: TroveUser["provider"]) => void;
   signOut: () => void;
   setDefaultAlerts: (presets: AlertPreset[]) => void;
@@ -110,9 +113,8 @@ export function TroveProvider({ children }: PropsWithChildren) {
 
   const setAlertPresets = useCallback((id: string, presets: AlertPreset[]) => {
     setState((current) => {
-      const alerts = { ...current.alerts };
-      if (presets.length === 0) delete alerts[id];
-      else alerts[id] = presets;
+      // 빈 배열은 "알림 해제"를 뜻한다. 키를 지우면 기본 알림이 다시 적용되므로 그대로 남긴다
+      const alerts = { ...current.alerts, [id]: presets };
       const favorites =
         presets.length > 0 && !current.favorites.includes(id)
           ? [...current.favorites, id]
@@ -121,8 +123,8 @@ export function TroveProvider({ children }: PropsWithChildren) {
     });
   }, []);
 
-  const markNotificationsRead = useCallback(() => {
-    setState((current) => ({ ...current, unreadNotifications: 0 }));
+  const markNotificationsRead = useCallback((ids: string[]) => {
+    setState((current) => ({ ...current, notificationsSeenAt: new Date().toISOString(), notificationsSeenIds: ids }));
   }, []);
 
   const signIn = useCallback((email: string, provider: TroveUser["provider"] = "email") => {
@@ -168,6 +170,7 @@ export function TroveProvider({ children }: PropsWithChildren) {
   );
 
   const resetDemo = useCallback(() => {
+    clearAnalytics();
     window.localStorage.removeItem(STORAGE_KEY);
     for (const key of LEGACY_STORAGE_KEYS) window.localStorage.removeItem(key);
     setState(initialState);

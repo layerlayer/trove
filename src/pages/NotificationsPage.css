@@ -1,0 +1,179 @@
+/* 알림 센터 (/notifications). 전역 .notification-item 모양을 그대로 쓰고, 줄 전체를 버튼으로 만든다 */
+
+.notif-page {
+  padding-bottom: calc(28px + env(safe-area-inset-bottom));
+}
+
+.notif-page .notif-header {
+  position: sticky;
+  top: 0;
+}
+
+.notif-header__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.3px;
+  line-height: 1;
+}
+
+/* 담아 둔 일정이 하나도 없을 때 */
+
+.notif-empty-state {
+  min-height: 420px;
+}
+
+.notif-empty-state .primary-button {
+  margin-top: 14px;
+}
+
+.notif-empty-state .text-button {
+  margin-top: 2px;
+  padding: 0 14px;
+}
+
+/* 새 소식 · 예정된 알림 */
+
+.notif-section {
+  margin-bottom: 20px;
+  padding: 8px var(--page-gutter) 0;
+}
+
+.notif-section__heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 2px;
+}
+
+.notif-section__heading h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.3px;
+}
+
+.notif-section__count {
+  display: inline-flex;
+  min-width: 20px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--lime);
+  color: var(--black);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
+}
+
+.notif-section__meta {
+  color: var(--gray-50);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.notif-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* 전역 .notification-item 은 자기 안쪽 여백을 갖지만, 여기서는 버튼이 줄 전체를 덮도록 여백을 버튼으로 옮긴다 */
+.notif-item.notification-item {
+  padding: 0;
+}
+
+.notif-row {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.notif-row:active {
+  opacity: 0.72;
+}
+
+.notif-row__content {
+  flex: 1;
+}
+
+.notif-row__title {
+  display: block;
+  color: var(--white);
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.notif-row__body {
+  display: block;
+  margin: 4px 0;
+  color: var(--gray-30);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.notif-row time {
+  display: block;
+}
+
+/* 안 읽음 점 */
+.notif-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 0 3px rgba(205, 255, 25, 0.16);
+  vertical-align: 2px;
+}
+
+/* 이미 읽은 소식은 아이콘과 제목을 차분하게 */
+.notif-row.is-read .notification-item__icon {
+  background: var(--surface);
+  color: var(--gray-30);
+}
+
+.notif-row.is-read .notif-row__title {
+  color: var(--gray-10);
+  font-weight: 650;
+}
+
+/* 예정된 알림은 아직 울리지 않았으니 라임 대신 회색 톤 */
+.notif-row--scheduled .notification-item__icon {
+  background: var(--surface-raised);
+  color: var(--gray-10);
+}
+
+.notif-empty {
+  margin: 6px 0 0;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--gray-40);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* 푸시 연결 전 안내 */
+.notif-note {
+  margin: 4px var(--page-gutter) 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--gray-40);
+  font-size: 12px;
+  line-height: 1.55;
+}

@@ -5,18 +5,19 @@ import { AppHeader } from "../components/AppHeader";
 import { AuthSheet } from "../components/AuthSheet";
 import { BottomNav } from "../components/BottomNav";
 import { BottomSheet } from "../components/BottomSheet";
-import { NotificationList } from "../components/NotificationList";
 import { ReleaseCard } from "../components/ReleaseCard";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
 import { categories, isCategory } from "../data/categories";
+import { entityInterestId } from "../data/published";
 import { useReleases } from "../data/ReleaseDataContext";
 import { dDayLabel } from "../lib/date";
 import { buildFeed, nextSavedRelease, type FeedBlock } from "../lib/feed";
 import { track } from "../lib/analytics";
+import { useUnreadNotifications } from "../lib/useUnreadNotifications";
 import type { Category, ReleaseItem } from "../types";
 
-type HomeSheet = "notifications" | "saved" | null;
+type HomeSheet = "saved" | null;
 
 /** 한 번에 더 그리는 블록 수(카드·추천 줄 합쳐서) */
 const PAGE_SIZE = 6;
@@ -60,7 +61,8 @@ export function HomePage() {
   const navigate = useNavigate();
   const navigationType = useNavigationType();
   const location = useLocation();
-  const { state, toggleFavorite, toggleInterest, markNotificationsRead } = useTrove();
+  const { state, toggleFavorite, toggleInterest } = useTrove();
+  const unreadNotifications = useUnreadNotifications();
   const { releases } = useReleases();
   // 뒤로 가기로 돌아왔을 때만 탭·펼친 양·스크롤 자리를 되살린다
   const [restored] = useState(() => (navigationType === "POP" ? readFeedMemo(location.key) : null));
@@ -125,9 +127,10 @@ export function HomePage() {
     navigate(`/release/${item.slug}`);
   };
 
-  const openNotifications = () => {
-    setSheet("notifications");
-    markNotificationsRead();
+  const openEntity = (item: ReleaseItem) => {
+    if (!item.entityName) return;
+    writeFeedMemo({ key: location.key, category: activeCategory, visibleCount, scrollY: window.scrollY });
+    navigate(`/entity/${entityInterestId(item.entityName).slice("entity:".length)}`);
   };
 
   const save = (item: ReleaseItem) => {
@@ -162,6 +165,7 @@ export function HomePage() {
       favorite={state.favorites.includes(item.id)}
       onOpen={() => openRelease(item)}
       onFavorite={() => save(item)}
+      onEntity={item.entityName ? () => openEntity(item) : undefined}
     />
   );
 
@@ -206,7 +210,7 @@ export function HomePage() {
   return (
     <main className="app-page home-page">
       <StatusBar />
-      <AppHeader brand unreadCount={state.unreadNotifications} onNotifications={openNotifications} />
+      <AppHeader brand unreadCount={unreadNotifications} onNotifications={() => navigate("/notifications")} />
 
       <div className="category-strip" role="tablist" aria-label="출시 카테고리">
         {categories.map((category) => (
@@ -253,10 +257,6 @@ export function HomePage() {
       </section>
 
       <BottomNav active="home" />
-
-      <BottomSheet open={sheet === "notifications"} title="새로운 소식" description="기다리는 일정의 중요한 변화만 모았어요." onClose={() => setSheet(null)}>
-        <NotificationList />
-      </BottomSheet>
 
       <BottomSheet
         open={sheet === "saved"}

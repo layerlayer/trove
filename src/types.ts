@@ -76,7 +76,10 @@ export interface TroveState {
   interests: string[];
   favorites: string[];
   alerts: Record<string, AlertPreset[]>;
-  unreadNotifications: number;
+  /** 알림 센터를 마지막으로 본 시각(ISO) */
+  notificationsSeenAt: string | null;
+  /** 알림 센터에서 이미 본 알림 id. 여기 없는 울린 알림만 배지로 센다 */
+  notificationsSeenIds: string[];
   user: TroveUser | null;
   settings: UserSettings;
 }

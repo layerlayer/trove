@@ -17,6 +17,8 @@ import { ReleaseListItem } from "../components/ReleaseListItem";
 import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
 import { ReleaseThumb } from "../components/Media";
+import { entityInterestId } from "../data/published";
+import { useBack } from "../lib/useBack";
 import { useReleases } from "../data/ReleaseDataContext";
 import { dDayLabel, formatDate } from "../lib/date";
 import { track } from "../lib/analytics";
@@ -39,6 +41,7 @@ const tbaOptions: Array<{ id: AlertPreset; title: string; description: string }>
 export function DetailPage() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const goBack = useBack("/home");
   const location = useLocation();
   const { state, toggleFavorite, setAlertPresets } = useTrove();
   const { releases } = useReleases();
@@ -143,7 +146,7 @@ export function DetailPage() {
     <main className="app-page detail-page">
       <StatusBar />
       <header className="simple-header detail-header">
-        <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={() => navigate(-1)}><ArrowLeft size={28} strokeWidth={1.8} /></button>
+        <button className="icon-button" type="button" aria-label="뒤로 가기" onClick={goBack}><ArrowLeft size={28} strokeWidth={1.8} /></button>
         <button className="icon-button" type="button" aria-label="공유하기" onClick={share}><Share2 size={26} strokeWidth={1.8} /></button>
       </header>
 
@@ -168,6 +171,13 @@ export function DetailPage() {
         <span className="eyebrow">{item.status === "confirmed" ? "DATE CONFIRMED" : item.status === "released" ? "RELEASED" : "COMING SOON"}</span>
         <div className="detail-title-row"><h1>{item.title}</h1><strong>{dDayLabel(item.releaseAt)}</strong></div>
         <p className="detail-date-line">{item.categoryLabel} · {dateText}</p>
+        {item.entityName ? (
+          <button className="detail-entity-link" type="button" onClick={() => navigate(`/entity/${entityInterestId(item.entityName ?? "").slice("entity:".length)}`)}>
+            <span>{item.entityName}</span>
+            <small>아티스트·브랜드 페이지</small>
+            <ChevronRight size={18} />
+          </button>
+        ) : null}
         <div className="tag-list" aria-label="분류">{item.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
 
         {item.waitingCount !== undefined ? <div className="detail-waiting-count"><Users size={18} /><strong>{item.waitingCount.toLocaleString("ko-KR")}명</strong><span>이 함께 기다리고 있어요</span></div> : null}

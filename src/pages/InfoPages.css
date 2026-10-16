@@ -1,0 +1,204 @@
+/* 소개·이용약관·개인정보 처리방침 (/about, /terms, /privacy). 전역 규칙은 styles.css, 여기는 info- 접두 클래스만 */
+
+.info-page {
+  padding-bottom: calc(48px + env(safe-area-inset-bottom));
+}
+
+.info-page .info-header {
+  position: sticky;
+  top: 0;
+}
+
+/* 제목 묶음: 작은 라벨, 제목, 마지막 수정일 */
+.info-head {
+  padding: 4px var(--page-gutter) 16px;
+}
+
+.info-head h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  line-height: 1.2;
+  word-break: keep-all;
+}
+
+.info-head__updated {
+  margin: 8px 0 0;
+  color: var(--gray-50);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+/* 검토 전 초안 안내: 노란 테두리로 본문과 확실히 구분한다 */
+.info-draft {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 var(--page-gutter) 22px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 196, 61, 0.6);
+  border-radius: 14px;
+  background: rgba(255, 196, 61, 0.09);
+  color: #ffd166;
+}
+
+.info-draft svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.info-draft p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: keep-all;
+}
+
+.info-draft strong {
+  font-weight: 800;
+}
+
+/* 본문: 15px, 1.6 줄간격, 읽기 편한 폭 */
+.info-body {
+  max-width: 40rem;
+  padding: 0 var(--page-gutter);
+  color: var(--gray-10);
+  font-size: 15px;
+  line-height: 1.6;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.info-body section {
+  margin: 0 0 30px;
+}
+
+.info-body h2 {
+  margin: 0 0 10px;
+  color: var(--white);
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.3px;
+  line-height: 1.35;
+}
+
+.info-body p {
+  margin: 0 0 10px;
+}
+
+.info-body p:last-child {
+  margin-bottom: 0;
+}
+
+.info-body ul {
+  margin: 0 0 12px;
+  padding-left: 18px;
+}
+
+.info-body ul:last-child {
+  margin-bottom: 0;
+}
+
+.info-body li {
+  margin: 0 0 6px;
+  padding-left: 2px;
+}
+
+.info-body li::marker {
+  color: var(--gray-50);
+}
+
+/* 본문 안 링크: 라임색 밑줄 */
+.info-body a {
+  color: var(--lime);
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: rgba(205, 255, 25, 0.45);
+  text-underline-offset: 3px;
+}
+
+.info-body a:active {
+  opacity: 0.7;
+}
+
+/* 한 줄 컨셉 */
+.info-lead {
+  color: var(--white);
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.3px;
+}
+
+/* 버튼처럼 보이는 내부 링크 (둘러보기) */
+.info-body a.info-cta {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--white);
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.info-body a.info-cta:active {
+  background: var(--surface-raised);
+  opacity: 1;
+}
+
+/* 출처 목록: "이름 · N건" */
+.info-source-list {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.info-source-list li {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.info-source-list strong {
+  color: var(--white);
+  font-weight: 700;
+}
+
+.info-source-list span {
+  color: var(--gray-40);
+  font-size: 14px;
+}
+
+/* 데이터 기준 시각 */
+.info-body .info-stamp {
+  color: var(--gray-50);
+  font-size: 13px;
+}
+
+/* 문서 끝 "함께 보기" */
+.info-body .info-related {
+  margin: 0;
+  padding-top: 6px;
+  color: var(--gray-40);
+  font-size: 14px;
+}
+
+.info-footer {
+  padding: 36px 0 0;
+  color: var(--gray-50);
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: 0.6px;
+  text-align: center;
+}
