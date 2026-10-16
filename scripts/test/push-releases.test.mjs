@@ -485,23 +485,60 @@ describe("push-releases: 독립 시나리오", () => {
     assert.equal((await fx.remoteLog()).length, 2);
     assert.equal(await exists(lockPath), false);
 
+    // 아래는 잠금의 나이로 판단하는 경우라, 이 머신이 켜진 지 얼마 안 됐으면(새 CI VM) 40분 전 잠금이 "재부팅 전" 으로 보여 답이 달라진다.
+    // 스크립트가 보는 가동 시간을 3일로 고정해 어디서 돌려도 같은 답이 나오게 한다.
+    const PINNED_UPTIME_S = 3 * 24 * 60 * 60;
+    const uptimeStub = join(fx.tmp, "uptime.mjs");
+    await writeFile(
+      uptimeStub,
+      [
+        'import os from "node:os";',
+        'import { syncBuiltinESMExports } from "node:module";',
+        `os.uptime = () => ${PINNED_UPTIME_S};`,
+        "syncBuiltinESMExports();",
+        "",
+      ].join("\n"),
+    );
+    const pinnedBoot = { NODE_OPTIONS: `--import=${uptimeStub}` };
+
     // 살아 있는 실행의 잠금은 30분이 넘었어도 치우지 않는다(치우면 두 실행이 같은 저장소를 동시에 만지고, 먼저 돌던 실행이 끝날 때 새 잠금까지 지운다)
     await writeFile(lockPath, JSON.stringify({ pid: process.pid, time: new Date(Date.now() - 40 * 60 * 1000).toISOString() }));
-    const longRunning = await fx.push();
+    const longRunning = await fx.push([], pinnedBoot);
     assert.equal(longRunning.code, 1, longRunning.stdout);
     assert.ok(longRunning.stderr.includes("진행 중"), longRunning.stderr);
     assert.ok(longRunning.stderr.includes("30분 넘게 진행 중"), longRunning.stderr);
     assert.ok(!longRunning.stderr.includes("치웠어요"), longRunning.stderr);
     assert.equal(await exists(lockPath), true, "살아 있는 실행의 잠금은 오래됐어도 지우지 않아요");
-    const quietLongRunning = await fx.push(["--quiet"]);
+    const quietLongRunning = await fx.push(["--quiet"], pinnedBoot);
     assert.equal(quietLongRunning.code, 0, quietLongRunning.stderr);
     assert.ok(quietLongRunning.stdout.includes("건너뛰어요"), quietLongRunning.stdout);
     assert.equal(await exists(lockPath), true);
     await rm(lockPath);
 
+    // 이번 부팅보다 먼저 쓴 잠금은 pid 가 살아 있어 보여도 치운다 — 재부팅 뒤 같은 번호를 받은 다른 프로세스일 뿐이고, 그대로 두면 그 프로세스가 사는 동안 영영 "진행 중" 이다
+    const beforeBoot = new Date(Date.now() - PINNED_UPTIME_S * 1000 - 60 * 60 * 1000).toISOString();
+    await writeFile(lockPath, JSON.stringify({ pid: process.pid, time: beforeBoot }));
+    const rebooted = await fx.push([], pinnedBoot);
+    assert.equal(rebooted.code, 0, rebooted.stderr);
+    assert.ok(rebooted.stderr.includes("재부팅 전 실행"), rebooted.stderr);
+    assert.ok(rebooted.stderr.includes(String(process.pid)), rebooted.stderr);
+    assert.ok(rebooted.stderr.includes("치웠어요"), rebooted.stderr);
+    assert.ok(!rebooted.stderr.includes("30분"), `재부팅 전 잠금은 30분 규칙 전에 치워야 해요:\n${rebooted.stderr}`);
+    assert.equal(await exists(lockPath), false, "재부팅 전 잠금이 남으면 그 pid 가 사는 동안 발행이 영영 멈춰요");
+    assert.equal((await fx.remoteLog()).length, 2, "변경이 없으니 커밋은 늘지 않아요");
+    // 부팅 뒤 1분 안의 시계 보정 여유: 부팅 직후 시각의 잠금은 재부팅 전으로 보지 않는다(살아 있는 pid 라 "진행 중")
+    const justAfterBoot = new Date(Date.now() - PINNED_UPTIME_S * 1000 + 30 * 1000).toISOString();
+    await writeFile(lockPath, JSON.stringify({ pid: process.pid, time: justAfterBoot }));
+    const sinceBoot = await fx.push([], pinnedBoot);
+    assert.equal(sinceBoot.code, 1, sinceBoot.stdout);
+    assert.ok(sinceBoot.stderr.includes("30분 넘게 진행 중"), sinceBoot.stderr);
+    assert.ok(!sinceBoot.stderr.includes("재부팅"), sinceBoot.stderr);
+    assert.equal(await exists(lockPath), true);
+    await rm(lockPath);
+
     // pid 를 알 수 없는 잠금은 30분 기준으로만 판단한다
     await writeFile(lockPath, JSON.stringify({ time: new Date(Date.now() - 40 * 60 * 1000).toISOString() }));
-    const stale = await fx.push();
+    const stale = await fx.push([], pinnedBoot);
     assert.equal(stale.code, 0, stale.stderr);
     assert.ok(stale.stderr.includes("30분"), stale.stderr);
     assert.equal((await fx.remoteLog()).length, 2, "변경이 없으니 커밋은 늘지 않아요");
@@ -642,6 +679,63 @@ describe("push-releases: 독립 시나리오", () => {
     assert.ok(result.stdout.includes(await fx.remoteHead()), `출력의 커밋 해시는 원격에 실제로 올라간 것이어야 해요:\n${result.stdout}`);
   });
 
+  test("푸시 직전에 원격이 손대던 파일을 바꿨으면, 발행 커밋이 로컬에 남았다고 말하며 rebase 전에 멈춘다 ('아무것도 바꾸지 않았어요' 는 거짓이다)", async () => {
+    const fx = await fixture();
+    await writeFile(join(fx.app, "src", "note.txt"), "내가 고치던 내용\n");
+    // PATH 앞에 둔 git 대용품이 첫 push 직전에 다른 체크아웃에서 src/note.txt 를 고친 커밋을 원격에 올린다.
+    // 이 실행은 발행 커밋을 만든 뒤에야 non-fast-forward 를 보고 받아오는데, 그 커밋이 손대던 파일을 건드리므로 rebase 전에 멈춰야 한다.
+    const bin = join(fx.tmp, "bin");
+    const other = join(fx.tmp, "other");
+    const marker = join(fx.tmp, "pushed-once");
+    await mkdir(bin);
+    const realGit = (await sh("sh", ["-c", "command -v git"], { cwd: fx.app, env: fx.env })).stdout.trim();
+    await writeFile(
+      join(bin, "git"),
+      [
+        "#!/bin/sh",
+        `real='${realGit}'`,
+        `if [ "$1" = "push" ] && [ ! -e '${marker}' ]; then`,
+        `  : > '${marker}'`,
+        `  "$real" clone --quiet '${fx.bare}' '${other}'`,
+        `  printf '다른 사람이 고친 내용\\n' > '${other}/src/note.txt'`,
+        `  "$real" -C '${other}' -c user.name=Other -c user.email=other@example.com commit --quiet -am "docs: 메모 수정"`,
+        `  "$real" -C '${other}' push --quiet origin main`,
+        "fi",
+        'exec "$real" "$@"',
+        "",
+      ].join("\n"),
+      { mode: 0o755 },
+    );
+
+    const result = await fx.push([], { PATH: `${bin}:${process.env.PATH}` });
+    assert.equal(result.code, 1, `${result.stdout}\n${result.stderr}`);
+    assert.ok(result.stdout.includes("먼저 받아온 뒤 다시 푸시"), result.stdout);
+    assert.ok(result.stderr.includes("커밋하지 않은 수정"), result.stderr);
+    assert.ok(result.stderr.includes("src/note.txt"), result.stderr);
+    assert.ok(result.stderr.includes("로컬에 만들어졌고"), result.stderr);
+    assert.ok(!result.stderr.includes("아무것도 바꾸지 않았어요"), `발행 커밋을 만든 뒤에 이렇게 말하면 거짓이에요:\n${result.stderr}`);
+    const log = await fx.localLog();
+    assert.equal(log.length, 2, log.join("\n"));
+    assert.ok(log[0].startsWith("data: 발행 반영"), log[0]);
+    const head = await fx.git(["rev-parse", "HEAD"]);
+    assert.ok(result.stderr.includes(head.slice(0, 7)), `남은 발행 커밋의 해시를 알려 줘야 해요:\n${result.stderr}`);
+    assert.deepEqual(await fx.remoteLog(), ["docs: 메모 수정", "init"]);
+    assert.equal(await fx.localStatus(), "M src/note.txt");
+    assert.equal(await readText(join(fx.app, "src", "note.txt")), "내가 고치던 내용\n", "충돌 표식이 들어가면 안 돼요");
+    assert.equal(await fx.git(["stash", "list"]), "", "autostash 가 남으면 안 돼요");
+
+    // 그 수정을 치우면 다음 실행이 남은 발행 커밋을 원격 위로 올려 푸시한다(메시지가 약속한 대로)
+    await fx.git(["stash", "push", "--quiet", "--", "src/note.txt"]);
+    const retried = await fx.push();
+    assert.equal(retried.code, 0, `${retried.stdout}\n${retried.stderr}`);
+    assert.ok(retried.stdout.includes("원격 위로 올려요"), retried.stdout);
+    const remote = await fx.remoteLog();
+    assert.equal(remote.length, 3, remote.join("\n"));
+    assert.ok(remote[0].startsWith("data: 발행 반영"), remote[0]);
+    assert.equal(remote[1], "docs: 메모 수정");
+    assert.equal(await fx.git(["rev-parse", "HEAD"]), await fx.remoteHead());
+  });
+
   test("원격이 거듭 앞서 나가도 시도 횟수가 남는 동안은 매번 받아와 올린다", async () => {
     const fx = await fixture();
     // PATH 앞에 둔 git 대용품이 처음 두 번의 push 직전마다 원격을 한 커밋씩 앞서게 한다
@@ -747,6 +841,40 @@ describe("push-releases: 독립 시나리오", () => {
     assert.equal((await fx.remoteLog()).length, 2);
   });
 
+  test("커밋도 되돌리기도 실패하면(.git/index.lock) 되돌렸다고 하지 않고, 다음 실행이 먼저 되돌린다고 알린다", async () => {
+    const fx = await fixture();
+    assert.equal((await fx.push()).code, 0);
+    const before = await readText(join(fx.app, "public", "releases.json"));
+    const more = [...ITEMS, { id: "g1", category: "game" }];
+    await writeData(fx.data, more, { ...META, count: more.length });
+    // 죽은 git 이 남긴 index.lock: `git add` 도, 되돌리는 `git checkout --` 도 같은 잠금에 막힌다
+    const indexLock = join(fx.app, ".git", "index.lock");
+    await writeFile(indexLock, "");
+
+    const failed = await fx.push();
+    assert.equal(failed.code, 1, failed.stdout);
+    assert.ok(failed.stderr.includes("스테이징하지 못했어요"), failed.stderr);
+    assert.ok(failed.stderr.includes("index.lock"), failed.stderr);
+    assert.ok(failed.stderr.includes("되돌리지 못했어요"), failed.stderr);
+    assert.ok(failed.stderr.includes("다음 실행에서 먼저 되돌려요"), failed.stderr);
+    assert.ok(!failed.stderr.includes("원래대로 되돌렸어요"), `되돌리지 못했는데 되돌렸다고 하면 거짓이에요:\n${failed.stderr}`);
+    const status = (await fx.localStatus()).split("\n").map((line) => line.trim()).sort(); // 첫 줄의 앞 공백은 trim 된다
+    assert.deepEqual(status, ["M public/releases.json", "M public/releases.meta.json"], "되돌리지 못했으니 발행 파일은 바뀐 채 남아 있어야 해요");
+    assert.notEqual(await readText(join(fx.app, "public", "releases.json")), before);
+    assert.equal((await fx.remoteLog()).length, 2);
+    assert.equal(await exists(join(fx.app, ".git", "trove-data-push.lock")), false);
+
+    // 잠금이 치워지면 다음 실행이 약속대로 먼저 되돌린 뒤 새 발행물을 반영한다
+    await rm(indexLock);
+    const retried = await fx.push();
+    assert.equal(retried.code, 0, `${retried.stdout}\n${retried.stderr}`);
+    assert.ok(retried.stderr.includes("커밋되지 않은 발행 파일 변경을 먼저 되돌려요"), retried.stderr);
+    assert.equal(await fx.localStatus(), "");
+    const log = await fx.remoteLog();
+    assert.equal(log.length, 3, log.join("\n"));
+    assert.ok(log[0].includes("(4건:"), log[0]);
+  });
+
   test("--quiet 라도 커밋되지 않은 발행 파일을 되돌렸으면 '변경 없음' 한 줄로 줄이지 않고 그 경고를 남긴다", async () => {
     const fx = await fixture();
     assert.equal((await fx.push()).code, 0);
@@ -810,7 +938,8 @@ describe("push-releases: 독립 시나리오", () => {
     assert.ok(result.stderr.includes("GitHub API 403"), result.stderr);
     assert.ok(!result.stderr.includes("읽지 못했어요"), result.stderr);
     assert.ok(!result.stdout.includes("배포가 끝나지 않았어요"), result.stdout);
-    assert.ok(Date.now() - started < 2000, "포기하는 응답이면 20초 대기 없이 끝나야 해요");
+    // 실행 전체(node 기동, git 스무 번, 실제 커밋·푸시)를 재는 것이라 느린 머신 여유를 둔다. 막으려는 것은 WAIT_INTERVAL_MS(20초) 대기 한 번이다.
+    assert.ok(Date.now() - started < 10_000, "포기하는 응답이면 20초 대기 없이 끝나야 해요");
     assert.equal((await fx.remoteLog()).length, 2);
   });
 
@@ -913,6 +1042,43 @@ describe("push-releases: 푸시 못한 발행 커밋 뒤로 원격이 앞서 나
     const retried = await fx.push();
     assert.equal(retried.code, 0, `${retried.stdout}\n${retried.stderr}`);
     assert.equal((await fx.remoteLog()).length, 3);
+    assert.equal(await fx.git(["rev-parse", "HEAD"]), await fx.remoteHead());
+  });
+
+  test("공백이 든 이름의 파일을 손댔을 때도(git status 가 따옴표로 감싸는 경로) rebase 전에 그 파일 이름을 대며 멈춘다", async () => {
+    const fx = await fixture();
+    await writeFile(join(fx.app, "src", "my note.txt"), "원본 내용\n");
+    await fx.git(["add", "--", "src/my note.txt"]);
+    await fx.git(["commit", "--quiet", "-m", "chore: 공백 이름 파일"]);
+    await fx.git(["push", "--quiet", "origin", "main"]);
+    assert.equal((await fx.push()).code, 0);
+    // 푸시만 빠진 상태 + 원격에 그 파일을 고친 커밋 + 같은 파일을 로컬에서 고치던 중
+    await fx.git(["--git-dir", fx.bare, "update-ref", "refs/heads/main", await fx.git(["rev-parse", "HEAD~1"])]);
+    await fx.pushFromOtherClone("docs: 메모 수정", (dir) => writeFile(join(dir, "src", "my note.txt"), "다른 사람이 고친 내용\n"));
+    await writeFile(join(fx.app, "src", "my note.txt"), "내가 고치던 내용\n");
+    const head = await fx.git(["rev-parse", "HEAD"]);
+
+    // 줄 단위 `git status` 는 "src/my note.txt" 처럼 따옴표로 감싸고 `git diff --name-only` 는 감싸지 않아, 그 둘을 맞춰 보면 겹침을 놓치고 autostash 충돌까지 간다
+    const result = await fx.push();
+    assert.equal(result.code, 1, result.stdout);
+    assert.ok(result.stderr.includes("커밋하지 않은 수정"), result.stderr);
+    assert.ok(result.stderr.includes("src/my note.txt"), result.stderr);
+    assert.ok(!result.stderr.includes("stash 에 들어 있어요"), `rebase 전에 멈춰야지 autostash 안전망까지 가면 안 돼요:\n${result.stderr}`);
+    assert.equal(await readText(join(fx.app, "src", "my note.txt")), "내가 고치던 내용\n", "손대던 내용이 그대로여야 해요");
+    assert.equal(await fx.localStatus(), 'M "src/my note.txt"');
+    assert.equal(await fx.git(["stash", "list"]), "", "autostash 가 남으면 안 돼요");
+    assert.equal(await fx.git(["rev-parse", "HEAD"]), head, "rebase 하지 않았어야 해요");
+    assert.equal((await fx.remoteLog()).length, 3);
+
+    const dry = await fx.push(["--dry-run"]);
+    assert.equal(dry.code, 1, dry.stdout);
+    assert.ok(dry.stderr.includes("src/my note.txt"), dry.stderr);
+    assert.equal(await readText(join(fx.app, "src", "my note.txt")), "내가 고치던 내용\n");
+
+    await fx.git(["stash", "push", "--quiet", "--", "src/my note.txt"]);
+    const retried = await fx.push();
+    assert.equal(retried.code, 0, `${retried.stdout}\n${retried.stderr}`);
+    assert.equal((await fx.remoteLog()).length, 4);
     assert.equal(await fx.git(["rev-parse", "HEAD"]), await fx.remoteHead());
   });
 
@@ -1208,5 +1374,91 @@ describe("순수 함수", () => {
     const result = await sh(process.execPath, [AGENT_SCRIPT, "status"], { cwd: tmpdir(), env: process.env });
     assert.equal(result.code, 1);
     assert.ok(result.stderr.includes("macOS"), result.stderr);
+  });
+
+  // launchctl 은 PATH 앞의 대용품으로, macOS 는 `--import` 로 process.platform 을 바꿔 흉내 낸다. 진짜 맥에서도 대용품이 앞서므로 같은 답이 나온다.
+  test("data:push:status 는 네 가지 상태를 구분한다 (켜짐 / GUI 세션 없음 / plist 만 있고 내려감 / 등록 안 됨)", async () => {
+    const tmp = await mkdtemp(join(tmpdir(), "trove-agent-"));
+    try {
+      const bin = join(tmp, "bin");
+      await mkdir(bin);
+      await writeFile(
+        join(bin, "launchctl"),
+        [
+          "#!/bin/sh",
+          'if [ "$1" = "print" ]; then',
+          '  case "$2" in',
+          '    */com.trove.data-push) if [ "$JOB_OK" = 1 ]; then printf "x = {\\n\\tpid = 42\\n\\tlast exit code = 0\\n}\\n"; exit 0; fi; exit 113 ;;',
+          '    gui/*) if [ "$DOMAIN_OK" = 1 ]; then exit 0; fi; exit 1 ;;',
+          "  esac",
+          "fi",
+          "exit 1",
+          "",
+        ].join("\n"),
+        { mode: 0o755 },
+      );
+      const darwin = join(tmp, "darwin.mjs");
+      await writeFile(darwin, 'Object.defineProperty(process, "platform", { value: "darwin" });\n');
+      const home = join(tmp, "home");
+      const appRoot = join(tmp, "app");
+      await mkdir(appRoot);
+      const plistPath = join(home, "Library", "LaunchAgents", "com.trove.data-push.plist");
+      const status = async ({ plist, jobOk, domainOk }) => {
+        await rm(home, { recursive: true, force: true });
+        await mkdir(dirname(plistPath), { recursive: true });
+        if (plist) {
+          await writeFile(
+            plistPath,
+            buildPlist({
+              label: "com.trove.data-push",
+              programArguments: [process.execPath, join(appRoot, "scripts", "push-releases.mjs"), "--quiet"],
+              workingDirectory: appRoot,
+              startInterval: 600,
+              logPath: join(home, "Library", "Logs", "trove-data-push.log"),
+              environment: {},
+            }),
+          );
+        }
+        const result = await sh(process.execPath, ["--import", darwin, AGENT_SCRIPT, "status"], {
+          cwd: tmp,
+          env: {
+            ...process.env,
+            HOME: home,
+            TROVE_APP_ROOT: appRoot,
+            PATH: `${bin}:${process.env.PATH}`,
+            JOB_OK: jobOk ? "1" : "0",
+            DOMAIN_OK: domainOk ? "1" : "0",
+          },
+        });
+        assert.equal(result.code, 0, `${result.stdout}\n${result.stderr}`);
+        return result.stdout;
+      };
+
+      const loaded = await status({ plist: true, jobOk: true, domainOk: true });
+      assert.ok(loaded.includes("설정 파일: 있음"), loaded);
+      assert.ok(loaded.includes("launchd 등록: 켜져 있음"), loaded);
+      assert.ok(loaded.includes("지금 실행 중 (pid 42)"), loaded);
+      assert.ok(loaded.includes("마지막 실행 종료 코드: 0 (정상)"), loaded);
+      assert.ok(!loaded.includes("data:push:install"), `켜져 있으면 다시 켜라고 하면 안 돼요:\n${loaded}`);
+
+      const noGui = await status({ plist: true, jobOk: false, domainOk: false });
+      assert.ok(noGui.includes("launchd 등록: 없음"), noGui);
+      assert.ok(noGui.includes("로그인한 세션이 없어"), noGui);
+      assert.ok(!noGui.includes("data:push:install"), `GUI 세션이 없을 때 install 을 권하면 또 같은 이유로 멈춰요:\n${noGui}`);
+
+      const unloaded = await status({ plist: true, jobOk: false, domainOk: true });
+      assert.ok(unloaded.includes("launchd 등록: 없음"), unloaded);
+      assert.ok(unloaded.includes("올라와 있지 않아요"), unloaded);
+      assert.ok(unloaded.includes("npm run data:push:install"), `plist 만 남고 내려간 경우에는 다시 켜는 법을 알려 줘야 해요:\n${unloaded}`);
+      assert.ok(!unloaded.includes("로그인한 세션이 없어"), unloaded);
+
+      const none = await status({ plist: false, jobOk: false, domainOk: true });
+      assert.ok(none.includes("설정 파일: 없음"), none);
+      assert.ok(none.includes("등록하려면: npm run data:push:install"), none);
+      assert.ok(!none.includes("올라와 있지"), none);
+      assert.ok(!none.includes("로그인한 세션이 없어"), none);
+    } finally {
+      await rm(tmp, { recursive: true, force: true });
+    }
   });
 });

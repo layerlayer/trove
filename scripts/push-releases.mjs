@@ -23,6 +23,7 @@
 import { execFile } from "node:child_process";
 import { rmSync } from "node:fs";
 import { access, open, readFile, realpath, rm, rmdir, stat, writeFile } from "node:fs/promises";
+import { uptime } from "node:os";
 import { relative, resolve } from "node:path";
 import { promisify } from "node:util";
 import {
@@ -43,6 +44,8 @@ const COMMIT_PREFIX = "data: 발행 반영";
 /** 이 스크립트가 만든 발행 커밋인지(제목 접두어로 판단). */
 const isReleaseCommit = (commitInfo) => commitInfo.subject.startsWith(COMMIT_PREFIX);
 const LOCK_STALE_MS = 30 * 60 * 1000;
+/** 잠금 시각이 "이번 부팅" 보다 얼마나 앞서야 재부팅 전 것으로 보는지. 초 단위 가동 시간과 작은 시계 보정을 흡수한다. */
+const BOOT_TOLERANCE_MS = 60 * 1000;
 const PUSH_BACKOFF_MS = [2000, 4000];
 /** 원격이 앞서 있어 거절된 푸시: 받아와 그 위에 올리면 된다. */
 const PUSH_BEHIND_RE = /non-fast-forward|fetch first/i;
@@ -166,7 +169,8 @@ async function acquireLock(gitDir) {
       if (cause?.code !== "EEXIST") throw cause;
     }
 
-    // 누가 들고 있는 잠금이다. 그 pid 가 이미 끝났으면(강제 종료·재부팅·터미널 닫힘) 치우고, pid 를 알 수 없으면 30분 넘게 묵은 것만 죽은 실행이 남긴 것으로 보고 치운다.
+    // 누가 들고 있는 잠금이다. 그 pid 가 이미 끝났으면(강제 종료·터미널 닫힘) 치우고, 이번 부팅보다 먼저 쓴 잠금이면(재부팅) 역시 치우며,
+    // pid 를 알 수 없으면 30분 넘게 묵은 것만 죽은 실행이 남긴 것으로 보고 치운다.
     // 살아 있는 실행의 잠금은 오래됐어도 치우지 않는다 — 치우면 두 실행이 같은 저장소를 동시에 만지고, 먼저 돌던 실행이 끝날 때 새 잠금까지 지운다.
     let info = {};
     try {
@@ -189,6 +193,13 @@ async function acquireLock(gitDir) {
         throw cause;
       }
     }
+    // 이번 부팅보다 먼저 쓴 잠금이면 그 실행은 재부팅으로 끝났다. pid 가 살아 있어 보여도 재부팅 뒤 같은 번호를 받은 다른 프로세스일 뿐이라,
+    // 그대로 두면 그 프로세스가 사는 동안 모든 주기 실행이 "진행 중" 이라며 건너뛴다. (os.uptime 은 잠자기 시간을 포함하므로 잠들었다 깬 맥은 재부팅으로 보지 않는다.)
+    if (startedAt < Date.now() - uptime() * 1000 - BOOT_TOLERANCE_MS) {
+      warn(`재부팅 전 실행(pid ${info?.pid ?? "?"})이 남긴 잠금을 치웠어요: ${lockPath}`);
+      await rm(lockPath, { force: true });
+      continue;
+    }
     const stale = Date.now() - startedAt >= LOCK_STALE_MS;
     if (stale && state !== "alive") {
       warn(`30분 넘게 남아 있던 잠금을 치웠어요: ${lockPath}`);
@@ -207,8 +218,9 @@ async function acquireLock(gitDir) {
 }
 
 // ---------- 명령 실행 ----------
-// 터미널이 아닐 때(launchd, 테스트)는 git 이 비밀번호를 물으며 멈추지 않고 바로 실패하게 한다.
-const childEnv = process.stdin.isTTY ? process.env : { ...process.env, GIT_TERMINAL_PROMPT: "0" };
+// git 의 메시지는 늘 영어로 받는다(LC_ALL=C): 아래 PUSH_*_RE 와 ff-only 거절 판별이 stderr 문구를 보는데, 한국어 로캘의 git 은 그 문구를 번역해 찍는다.
+// porcelain 출력·파일 이름·UTF-8 커밋 메시지는 로캘과 무관하다. 터미널이 아닐 때(launchd, 테스트)는 git 이 비밀번호를 물으며 멈추지 않고 바로 실패하게 한다.
+const childEnv = { ...process.env, LC_ALL: "C", ...(process.stdin.isTTY ? {} : { GIT_TERMINAL_PROMPT: "0" }) };
 
 async function run(command, args) {
   try {
@@ -288,8 +300,15 @@ async function preflight() {
 
 /** main() 이 발행 파일 두 개를 HEAD 상태로 되돌렸는지. 그 뒤에 멈추는 메시지는 "아무것도 바꾸지 않았어요" 라고 할 수 없다. */
 let restoredStale = false;
+/** 이번 실행이 만든 발행 커밋의 해시. 그 뒤(푸시 단계)에 멈추는 메시지는 커밋이 로컬에 남아 다음 실행에서 푸시된다고 말해야 한다. */
+let committedSha = null;
+/** 멈추는 메시지에 붙일, 이 실행이 지금까지 바꾼 것. 바꾼 게 없다는 말은 실제로 그럴 때만 한다. */
 const untouched = () =>
-  restoredStale ? "발행 파일 두 개를 HEAD 상태로 되돌린 것 외에는 바꾸지 않았어요." : "아무것도 바꾸지 않았어요.";
+  committedSha
+    ? `발행 커밋(${committedSha.slice(0, 7)})은 로컬에 만들어졌고, 다음 실행에서 푸시해요.`
+    : restoredStale
+      ? "발행 파일 두 개를 HEAD 상태로 되돌린 것 외에는 바꾸지 않았어요."
+      : "아무것도 바꾸지 않았어요.";
 
 function divergedStop(detail = "") {
   return new Stop(
@@ -445,11 +464,28 @@ async function changedDataPathsAgainst(ref, written) {
  * 발행 파일 두 개는 보지 않는다 — main() 이 미리 되돌리므로(dry-run 은 그대로 두지만 실제 실행이라면 되돌렸을 것이므로) 여기 걸리는 것은 사람이 손댄 다른 파일이다.
  */
 async function uncommittedOverlap() {
-  const dirty = (await changedPaths()).map((change) => change.path).filter((path) => !DATA_PATHS.includes(path));
+  // 두 목록 모두 NUL 구분(-z)으로 읽는다. 줄 단위 출력은 공백·한글이 든 경로를 따옴표로 감싸는데 status 와 diff 의 기준이 달라(status 는 공백만 있어도 감싼다)
+  // 같은 파일이 서로 다른 문자열로 나와 겹침을 놓친다. -z 에서는 양쪽 다 있는 그대로의 경로다.
+  const status = await run("git", ["status", "--porcelain", "-z", "--untracked-files=all"]);
+  if (!status.ok) throw new Stop(`변경 사항을 확인하지 못했어요.\n${status.stderr.trim()}`);
+  const entries = status.stdout.split("\0");
+  const dirty = [];
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i];
+    if (entry.length <= 3) continue;
+    const path = entry.slice(3);
+    if (!DATA_PATHS.includes(path)) dirty.push(path);
+    // 이름을 바꾸거나 복사한 항목(R/C)은 -z 에서 새 이름 뒤에 원래 이름이 한 항목 더 따라온다(상태 글자 없이). 원격이 원래 이름을 바꿨어도 겹치므로 둘 다 본다.
+    if (/[RC]/.test(entry.slice(0, 2))) {
+      i += 1;
+      const original = entries[i];
+      if (original && !DATA_PATHS.includes(original)) dirty.push(original);
+    }
+  }
   if (!dirty.length) return [];
-  const incoming = new Set(
-    (await git(["diff", "--name-only", "HEAD...FETCH_HEAD"], "원격의 새 커밋이 바꾼 파일을 확인하지 못했어요.")).split("\n"),
-  );
+  const diff = await run("git", ["diff", "--name-only", "-z", "HEAD...FETCH_HEAD"]);
+  if (!diff.ok) throw new Stop(`원격의 새 커밋이 바꾼 파일을 확인하지 못했어요.\n${diff.stderr.trim()}`);
+  const incoming = new Set(diff.stdout.split("\0"));
   return dirty.filter((path) => incoming.has(path));
 }
 
@@ -733,13 +769,24 @@ async function publish({ ahead, previousCount, publicExisted }) {
     } catch (cause) {
       // `git add` 가 이미 지나갔을 수 있어, add 전에 읽어 둔 changes 가 아니라 지금 상태를 다시 읽어 되돌린다
       // (add 전 상태로는 스테이징이 풀리지 않고, " M" 은 checkout 이 인덱스의 새 내용을 다시 쓴다).
+      let restored = false;
       try {
         await restore(await changedDataPaths(), publicExisted);
+        restored = true;
       } catch {
-        // 되돌리기까지 실패하면 다음 실행의 stale 정리("커밋되지 않은 발행 파일 변경을 먼저 되돌려요")에 맡긴다
+        // 되돌리기까지 실패하면(예: 같은 .git/index.lock 에 막힘) 다음 실행의 stale 정리("커밋되지 않은 발행 파일 변경을 먼저 되돌려요")에 맡기고, 그렇다고 알린다
       }
-      throw cause instanceof Stop ? new Stop(`${cause.message}\npublic/ 의 발행 파일은 원래대로 되돌렸어요.`) : cause;
+      throw cause instanceof Stop
+        ? new Stop(
+            `${cause.message}\n${
+              restored
+                ? "public/ 의 발행 파일은 원래대로 되돌렸어요."
+                : "public/ 의 발행 파일을 되돌리지 못했어요. 다음 실행에서 먼저 되돌려요 (git status 참고)."
+            }`,
+          )
+        : cause;
     }
+    committedSha = sha;
     say(`커밋 ${sha.slice(0, 7)}: ${message}`);
   }
 
