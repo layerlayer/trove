@@ -36,28 +36,34 @@ TROVE_OPS_DATA_DIR=/path/to/data npm run data:pull
 
 ### 발행 자동 반영 (Mac)
 
-운영 콘솔에서 **발행**만 하면, 맥에 등록해 둔 작업이 10분 안에 `public/releases.json` 을 갱신해 커밋·푸시하고, Vercel 이 1~2분 뒤 새 데이터를 배포합니다. 사람이 `data:pull` 을 돌리거나 커밋할 필요가 없습니다.
+운영 콘솔에서 **발행**만 하면, 맥에 등록해 둔 작업이 10분 안에 `public/releases.json` 을 갱신해 커밋·푸시하고, Vercel 이 1~2분 뒤 새 데이터를 배포합니다. 사람이 `data:pull` 을 돌리거나 커밋할 필요가 없습니다. 단, 맥이 켜져 있고 로그인돼 있을 때만 돕니다. 잠자기(덮개를 닫은) 중에는 돌지 않고, 깨어나면 다음 주기에 반영됩니다.
 
-한 번만 등록합니다(앱 폴더에서):
+한 번만 등록합니다(앱 폴더에서, ssh 가 아니라 맥 화면에 로그인한 그 세션의 터미널에서):
 
 ```bash
 npm run data:push:install
 ```
 
+macOS 13 이상에서는 등록 직후 "백그라운드 항목 추가됨" 알림이 뜨고, 시스템 설정 > 일반 > 로그인 항목 > 백그라운드에서 허용 목록에 `node` 로 보입니다. 이 스위치를 끄면 자동 반영이 멈추니 켜 두세요. 끈 적이 있으면 `npm run data:push:install` 을 다시 실행하면 됩니다(등록할 때 `launchctl enable` 을 함께 수행합니다).
+
 잘 돌고 있는지 보려면:
 
 ```bash
 npm run data:push:status                        # 등록 여부, 마지막 실행 결과, 최근 로그 5줄
-tail -n 20 ~/Library/Logs/trove-data-push.log   # 로그 전체
+tail -n 20 ~/Library/Logs/trove-data-push.log   # 최근 로그 20줄
 ```
+
+로그는 계속 덧붙여지고 자동으로 비워지지 않습니다(10분 주기면 하루 5KB 안팎). 커지면 그냥 지워도 됩니다. Node 를 다른 위치로 옮기거나 버전 관리 도구로 바꿨다면(`nvm` 기본 버전 변경 등) 등록된 작업이 설치 당시의 node 경로를 쓰므로 `npm run data:push:install` 을 한 번 더 실행하세요. `npm run data:push:status` 가 "노드 경로가 없어요" 라고 알려 줍니다(Homebrew 의 node 는 `brew upgrade` 뒤에도 그대로인 경로로 등록합니다).
 
 지금 바로 한 번 반영하고 싶을 때(등록과 상관없이 아무 때나 실행할 수 있습니다):
 
 ```bash
 npm run data:push               # 변경이 있으면 커밋·푸시, 없으면 "변경 없음"
 npm run data:push -- --wait     # 푸시 뒤 Vercel 배포가 끝날 때까지 최대 5분 기다립니다
-npm run data:push -- --dry-run  # 무엇을 할지만 보여 주고 실제로는 바꾸지 않습니다
+npm run data:push -- --dry-run  # 무엇을 할지만 보여 주고 아무것도 바꾸지 않습니다(원격 상태만 읽어 옵니다)
 ```
+
+`--wait` 는 GitHub 의 공개 REST API(인증 없음, IP 당 시간당 60회) 로 배포 상태를 읽습니다. 저장소를 비공개로 바꾸거나 한 시간에 여러 번 쓰면 상태를 읽지 못할 수 있는데, 그래도 푸시는 된 것이니 Vercel 대시보드에서 확인하면 됩니다.
 
 멈추려면:
 
@@ -65,12 +71,14 @@ npm run data:push -- --dry-run  # 무엇을 할지만 보여 주고 실제로는
 npm run data:push:uninstall
 ```
 
-전제 조건은 두 가지입니다.
+전제 조건은 네 가지입니다.
 
 - 앱 폴더가 `main` 브랜치에 있어야 합니다. 다른 브랜치에 있으면 아무것도 하지 않고 로그에 그 이유를 남깁니다.
-- 맥에서 `git push` 가 로그인(비밀번호·토큰 입력) 없이 되어야 합니다. 원격 주소는 HTTPS(`https://github.com/…`)로 두고 macOS 키체인에 GitHub 로그인을 저장해 두는 것을 권장합니다(`git config --global credential.helper osxkeychain`). ssh(`git@github.com:…`) 주소는 자동 실행 환경에 ssh 에이전트가 없어 실패할 수 있습니다.
+- 맥에서 `git push` 가 로그인(비밀번호·토큰 입력) 없이 되어야 합니다. 자동 실행(launchd) 중에는 git 이 토큰이나 ssh 키 암호를 물을 수 없습니다. HTTPS 주소(`https://github.com/…`)면 macOS 키체인에 GitHub 로그인을 한 번 저장해 두고(`git config --global credential.helper osxkeychain` 뒤 터미널에서 한 번 푸시), ssh(`git@github.com:…`) 주소면 키 암호를 키체인에 넣어 두세요(`ssh-add --apple-use-keychain ~/.ssh/<키>`, `~/.ssh/config` 에 `UseKeychain yes`). `npm run data:push:install` 과 `status` 가 이 조건 그대로 인증을 미리 확인해 알려 줍니다. 로그인 정보가 없어 푸시가 거절되면 스크립트는 재시도하지 않고 로그에 "로그인할 수 없어서" 와 할 일을 남깁니다.
+- 맥에 그 계정으로 **화면 로그인이 되어 있고, 맥이 잠들지 않아야** 합니다. 등록된 작업은 로그인한 사용자 세션(launchd `gui/<uid>`) 안에서만 돌기 때문에, 재시작 뒤 로그인하기 전이나 맥이 잠자는 동안에는 돌지 않습니다(깨어나면 다음 주기에 이어서 돕니다). 계속 돌리려면 시스템 설정 → 사용자 및 그룹에서 자동 로그인을 켜고(FileVault 가 켜져 있으면 재시작 뒤 잠금 해제 화면에서 한 번 로그인해야 합니다), 에너지(디스플레이) 설정에서 "디스플레이가 꺼져 있을 때 자동으로 잠자기 방지" 를 켭니다. ssh 로 접속한 터미널에서 `npm run data:push:install` 을 실행하면 "맥 화면에 로그인한 세션이 없어요" 라며 멈춥니다.
+- 앱 폴더가 `~/Documents`, `~/Desktop`, `~/Downloads` 안에 있으면(예: `~/Documents/Trove`), 등록 직후 첫 자동 실행 때 macOS 가 "node"이(가) Documents 폴더의 파일에 접근하려고 합니다 라는 창을 띄웁니다. 반드시 **허용**을 누르세요. 거부했거나 나중에 로그에 `EPERM: operation not permitted, open '…/scripts/push-releases.mjs'` 가 보이면 시스템 설정 > 개인정보 보호 및 보안 > 파일 및 폴더 에서 node 의 "Documents 폴더" 를 켜 주세요. 터미널에서 직접 `npm run data:push` 를 돌릴 때는 터미널의 권한을 물려받아 이 창이 뜨지 않습니다. node 를 업데이트하면(예: `brew upgrade node`) 다시 물어볼 수 있습니다. 앱 폴더를 세 폴더 밖(예: `~/Projects/Trove`)에 두면 이 절차가 필요 없습니다(`install` 과 `status` 가 보호 폴더 안이면 미리 알려 줍니다).
 
-안전장치: 발행물이 0건이거나 이전보다 절반 넘게 줄어들면 반영하지 않고 로그에 남깁니다(정말 의도한 경우 `npm run data:push -- --allow-empty` 또는 `-- --allow-shrink`). 커밋에는 `public/releases.json` 과 `public/releases.meta.json` 두 파일만 들어가며, 앱 폴더의 다른 수정 사항은 건드리지 않습니다. 로컬에 직접 만든 미푸시 커밋이 있으면 그것을 먼저 푸시하라고 알리고 멈춥니다. 주기는 `TROVE_PUSH_INTERVAL=300 npm run data:push:install` 처럼 초 단위로 바꿀 수 있고, 발행물 폴더가 기본 위치(`trove-ops/data`)가 아니면 `TROVE_OPS_DATA_DIR=/path npm run data:push:install` 로 함께 넣습니다.
+안전장치: 발행물이 0건이거나 마지막으로 커밋된 것보다 절반 넘게 줄어들면 반영하지 않고 로그에 남깁니다(정말 의도한 경우 `npm run data:push -- --allow-empty` 또는 `-- --allow-shrink`). 커밋에는 `public/releases.json` 과 `public/releases.meta.json` 두 파일만 들어가며, 앱 폴더의 다른 수정 사항은 건드리지 않습니다(이 두 파일에 커밋되지 않은 변경이 남아 있으면 발행물로 덮어쓰기 전에 되돌립니다). 로컬에 직접 만든 미푸시 커밋이 있으면 그것을 먼저 푸시하라고 알리고 멈춥니다. 지난 실행이 푸시하지 못한 발행 커밋만 남아 있을 때 원격이 앞서 나가 있으면, 그 커밋을 원격 위로 올려 다시 푸시합니다. 주기는 `TROVE_PUSH_INTERVAL=300 npm run data:push:install` 처럼 초 단위로 바꿀 수 있고, 발행물 폴더가 기본 위치(`trove-ops/data`)가 아니면 `TROVE_OPS_DATA_DIR=/path npm run data:push:install` 로 함께 넣습니다. 원격 이름이 `origin` 이 아니거나 브랜치가 `main` 이 아니면 `TROVE_PUSH_REMOTE=…`, `TROVE_PUSH_BRANCH=…` 도 같은 방식으로 함께 넣습니다.
 
 ## 구현된 흐름
 

@@ -3,7 +3,7 @@
  * scripts/pull-releases.mjs 와 scripts/push-releases.mjs 가 함께 쓰고,
  * 순수 함수들은 scripts/test/ 에서 네트워크 없이 검증한다.
  */
-import { copyFile, mkdir, readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,8 +23,14 @@ export function opsDataDir(root) {
   return resolve(root, process.env.TROVE_OPS_DATA_DIR ?? "trove-ops/data");
 }
 
-export async function readJson(path) {
-  return JSON.parse(await readFile(path, "utf8"));
+/**
+ * JSON 파일을 한 번만 읽어 { raw, value } 로 돌려준다.
+ * 복사할 때는 raw 를 그대로 써야 검증한 내용과 public/ 에 들어가는 내용이 같다
+ * (경로를 다시 읽으면 그 사이 운영 콘솔이 고쳐 쓴 파일이 들어갈 수 있다). Buffer 로 읽어 바이트도 그대로 둔다.
+ */
+export async function readJsonFile(path) {
+  const raw = await readFile(path);
+  return { raw, value: JSON.parse(raw.toString("utf8")) };
 }
 
 /** 카테고리별 건수. 등장 순서를 지킨다(복사 결과 출력에 그대로 쓴다). */
@@ -37,10 +43,13 @@ export function countByCategory(items) {
   return byCategory;
 }
 
+const NEXT_ACTION = "운영 콘솔에서 먼저 발행했는지, 발행물 폴더 위치(TROVE_OPS_DATA_DIR)가 맞는지 확인해 주세요. 아무것도 바꾸지 않았어요.";
+
 /**
  * 발행물을 targetDir 로 복사한다.
- * releases.json 을 읽지 못하거나 목록이 아니면 던진다(앱이 깨진 데이터를 싣지 않게).
+ * releases.json 을 읽지 못하거나 목록이 아니면 던진다(앱이 깨진 데이터를 싣지 않게). 던지는 메시지에는 다음 할 일이 들어 있다.
  * releases.meta.json 은 있으면 함께 복사하고, 없으면 warnings 에 한 줄 남기고 건너뛴다.
+ * 각 파일은 한 번만 읽어 검증한 뒤 그 바이트를 그대로 쓴다.
  */
 export async function pullReleases({
   root = appRoot(),
@@ -52,25 +61,28 @@ export async function pullReleases({
   const warnings = [];
 
   let items;
+  let itemsRaw;
   try {
-    items = await readJson(itemsPath);
+    ({ raw: itemsRaw, value: items } = await readJsonFile(itemsPath));
   } catch (cause) {
-    throw new Error(`releases.json 을 읽지 못했어요: ${itemsPath}\n${cause instanceof Error ? cause.message : cause}`);
+    throw new Error(
+      `releases.json 을 읽지 못했어요: ${itemsPath}\n${cause instanceof Error ? cause.message : cause}\n${NEXT_ACTION}`,
+    );
   }
   if (!Array.isArray(items)) {
-    throw new Error(`releases.json 이 목록이 아니에요: ${itemsPath}`);
+    throw new Error(`releases.json 이 목록이 아니에요: ${itemsPath}\n운영 콘솔에서 다시 발행해 주세요. 아무것도 바꾸지 않았어요.`);
   }
 
   await mkdir(targetDir, { recursive: true });
   const targetItems = resolve(targetDir, "releases.json");
-  await copyFile(itemsPath, targetItems);
+  await writeFile(targetItems, itemsRaw);
 
   const targetMeta = resolve(targetDir, "releases.meta.json");
   let publishedAt = null;
   let metaCopied = false;
   try {
-    const meta = await readJson(metaPath);
-    await copyFile(metaPath, targetMeta);
+    const { raw: metaRaw, value: meta } = await readJsonFile(metaPath);
+    await writeFile(targetMeta, metaRaw);
     metaCopied = true;
     publishedAt = typeof meta?.publishedAt === "string" ? meta.publishedAt : null;
   } catch {
@@ -116,9 +128,14 @@ export function parseRemote(url) {
   return { owner: match[1], repo: match[2] };
 }
 
-/** ssh 방식 원격인지(git@… 또는 ssh://). launchd 밑에서는 ssh 에이전트가 없을 수 있어 경고에 쓴다. */
+/** ssh 방식 원격인지(git@… 또는 ssh://). launchd 인증 확인에서 ssh(BatchMode) 검사를 고를 때 쓴다. */
 export function isSshRemote(url) {
   return typeof url === "string" && /^(?:ssh:\/\/|[\w.-]+@[\w.-]+:)/.test(url.trim());
+}
+
+/** http(s) 방식 원격인지. launchd 인증 확인에서 자격 증명 도우미(키체인) 검사를 고를 때 쓴다. */
+export function isHttpRemote(url) {
+  return typeof url === "string" && /^https?:\/\//i.test(url.trim());
 }
 
 const SEOUL_TIME = new Intl.DateTimeFormat("en-CA", {
@@ -160,7 +177,7 @@ export function shouldRefuse({ previousCount = 0, nextCount, allowEmpty = false,
   }
   if (previousCount > 0 && nextCount < previousCount / 2 && !allowShrink) {
     return (
-      `발행 건수가 ${previousCount}건에서 ${nextCount}건으로 절반 넘게 줄었어요. 발행이 잘못된 게 아닌지 콘솔을 확인해 주세요. ` +
+      `발행 건수가 ${previousCount}건에서 ${nextCount}건으로 절반 넘게 줄었어요. 발행이 잘못된 게 아닌지 운영 콘솔을 확인해 주세요. ` +
       "의도한 변경이면 --allow-shrink 를 붙여 다시 실행해 주세요."
     );
   }
