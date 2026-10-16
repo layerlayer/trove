@@ -27,7 +27,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-dont-stop",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "TEEN TOP",
@@ -61,7 +61,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-in-yeonhui-dong",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Zion. T",
@@ -95,7 +95,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-lost-found",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Hyojung",
@@ -129,7 +129,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-star-trace-afro-remix-by-imlay",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "PLAVE",
@@ -165,7 +165,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-tata-feat-minami-of-rescene",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Loco",
@@ -199,7 +199,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-next-chapter",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Hearts2Hearts",
@@ -215,7 +215,7 @@
     "releaseWindow": null,
     "datePrecision": "exact_time",
     "dateLabel": "티켓오픈",
-    "status": "confirmed",
+    "status": "released",
     "tags": [
       "기타",
       "티켓링크"
@@ -236,7 +236,7 @@
     "sourceName": "티켓링크",
     "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66211",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "ticket_open",
     "entityName": null,
@@ -252,7 +252,7 @@
     "releaseWindow": null,
     "datePrecision": "exact_time",
     "dateLabel": "티켓오픈",
-    "status": "confirmed",
+    "status": "released",
     "tags": [
       "기타",
       "티켓링크"
@@ -273,7 +273,7 @@
     "sourceName": "티켓링크",
     "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66220",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "ticket_open",
     "entityName": null,
@@ -282,14 +282,14 @@
   {
     "id": "ticketlink:66227:ticket_open:티켓오픈",
     "slug": "ticketlink-66227-ticket-open",
-    "title": "공감 U-HEE - 대구 티켓오픈 안내",
+    "title": "[단독판매] 공감 U-HEE - 대구 티켓오픈 안내",
     "category": "concert",
     "categoryLabel": "공연",
     "releaseAt": "2026-10-16T18:00:00+09:00",
     "releaseWindow": null,
     "datePrecision": "exact_time",
     "dateLabel": "티켓오픈",
-    "status": "confirmed",
+    "status": "released",
     "tags": [
       "기타",
       "티켓링크"
@@ -310,11 +310,13 @@
     "sourceName": "티켓링크",
     "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66227",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "ticket_open",
     "entityName": null,
-    "opsFlags": []
+    "opsFlags": [
+      "changed_after_approval"
+    ]
   },
   {
     "id": "ticketlink:66203:ticket_open:티켓오픈",
@@ -326,7 +328,7 @@
     "releaseWindow": null,
     "datePrecision": "exact_time",
     "dateLabel": "티켓오픈",
-    "status": "confirmed",
+    "status": "released",
     "tags": [
       "콘서트",
       "티켓링크"
@@ -351,7 +353,9 @@
     "endsAt": null,
     "scheduleType": "ticket_open",
     "entityName": null,
-    "opsFlags": []
+    "opsFlags": [
+      "source_removed"
+    ]
   },
   {
     "id": "kpopping:2026-all-of-my-life:album_release:발매일",
@@ -381,7 +385,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-all-of-my-life",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Max Changmin",
@@ -415,7 +419,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-on-our-noise",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "EVNNE",
@@ -449,7 +453,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-strange-muse",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "NMIXX",
@@ -465,7 +469,7 @@
     "releaseWindow": null,
     "datePrecision": "exact_time",
     "dateLabel": "티켓오픈",
-    "status": "confirmed",
+    "status": "tentative",
     "tags": [
       "기타",
       "티켓링크"
@@ -490,7 +494,9 @@
     "endsAt": null,
     "scheduleType": "ticket_open",
     "entityName": null,
-    "opsFlags": []
+    "opsFlags": [
+      "source_removed"
+    ]
   },
   {
     "id": "wikipedia:2026-11-perfect-storm-tomorrow-x-together:album_release:release-date",
@@ -519,7 +525,7 @@
     "sourceName": "Wikipedia (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/2026_in_South_Korean_music#November",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Tomorrow X Together",
@@ -553,7 +559,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-cute-anxiety",
     "description": "",
-    "lastVerifiedAt": "2026-10-15T13:51:51.424Z",
+    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Mujin",

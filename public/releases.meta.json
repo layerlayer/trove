@@ -1,15 +1,16 @@
 {
-  "publishedAt": "2026-10-15T15:17:28.580Z",
+  "publishedAt": "2026-10-16T13:55:28.181Z",
   "count": 16,
   "byCategory": {
     "music": 11,
     "concert": 5
   },
   "byStatus": {
-    "released": 5,
-    "confirmed": 11
+    "released": 9,
+    "confirmed": 6,
+    "tentative": 1
   },
-  "held": 1,
+  "held": 2,
   "skippedPast": 0,
-  "sourceRemoved": 0
+  "sourceRemoved": 2
 }
