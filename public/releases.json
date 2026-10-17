@@ -469,6 +469,191 @@
     "opsFlags": []
   },
   {
+    "id": "wikigames:nintendo-switch-sports-resort:game_release:출시",
+    "slug": "wikigames-nintendo-switch-sports-resort-game-release",
+    "title": "Nintendo Switch Sports Resort",
+    "category": "game",
+    "categoryLabel": "게임",
+    "releaseAt": "2026-10-22",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "출시",
+    "status": "confirmed",
+    "tags": [
+      "게임",
+      "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "플랫폼",
+        "value": "Nintendo Switch 2"
+      },
+      {
+        "label": "출처",
+        "value": "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+      }
+    ],
+    "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
+    "description": "",
+    "lastVerifiedAt": "2026-10-17T03:08:00.795Z",
+    "endsAt": null,
+    "scheduleType": "game_release",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
+    "id": "wikigames:call-of-duty-modern-warfare-4:game_release:출시",
+    "slug": "wikigames-call-of-duty-modern-warfare-4-game-release",
+    "title": "Call of Duty: Modern Warfare 4",
+    "category": "game",
+    "categoryLabel": "게임",
+    "releaseAt": "2026-10-23",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "출시",
+    "status": "confirmed",
+    "tags": [
+      "게임",
+      "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "플랫폼",
+        "value": "PC, PS5, Xbox Series X|S, Nintendo Switch 2"
+      },
+      {
+        "label": "출처",
+        "value": "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+      }
+    ],
+    "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
+    "description": "",
+    "lastVerifiedAt": "2026-10-17T03:08:00.795Z",
+    "endsAt": null,
+    "scheduleType": "game_release",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
+    "id": "wikigames:one-piece-grand-gourmet:game_release:출시",
+    "slug": "wikigames-one-piece-grand-gourmet-game-release",
+    "title": "One Piece: Grand Gourmet",
+    "category": "game",
+    "categoryLabel": "게임",
+    "releaseAt": "2026-10-23",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "출시",
+    "status": "confirmed",
+    "tags": [
+      "게임",
+      "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "플랫폼",
+        "value": "PC, Nintendo Switch, Nintendo Switch 2, iOS, Android"
+      },
+      {
+        "label": "출처",
+        "value": "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+      }
+    ],
+    "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
+    "description": "",
+    "lastVerifiedAt": "2026-10-17T03:08:00.795Z",
+    "endsAt": null,
+    "scheduleType": "game_release",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
+    "id": "wikigames:monster-hunter-outlanders:game_release:출시",
+    "slug": "wikigames-monster-hunter-outlanders-game-release",
+    "title": "Monster Hunter Outlanders",
+    "category": "game",
+    "categoryLabel": "게임",
+    "releaseAt": "2026-10-29",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "출시",
+    "status": "confirmed",
+    "tags": [
+      "게임",
+      "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "플랫폼",
+        "value": "iOS, Android"
+      },
+      {
+        "label": "출처",
+        "value": "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+      }
+    ],
+    "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
+    "description": "",
+    "lastVerifiedAt": "2026-10-17T03:08:00.795Z",
+    "endsAt": null,
+    "scheduleType": "game_release",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
+    "id": "wikigames:phantom-blade-zero:game_release:출시",
+    "slug": "wikigames-phantom-blade-zero-game-release",
+    "title": "Phantom Blade Zero",
+    "category": "game",
+    "categoryLabel": "게임",
+    "releaseAt": "2026-10-29",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "출시",
+    "status": "confirmed",
+    "tags": [
+      "게임",
+      "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "플랫폼",
+        "value": "PC, PS5"
+      },
+      {
+        "label": "출처",
+        "value": "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+      }
+    ],
+    "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
+    "description": "",
+    "lastVerifiedAt": "2026-10-17T03:08:00.795Z",
+    "endsAt": null,
+    "scheduleType": "game_release",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
     "id": "ticketlink:66201:ticket_open:티켓오픈",
     "slug": "ticketlink-66201-ticket-open",
     "title": "[단독판매] <슈퍼 루나틱> - 울진 티켓오픈 안내",
@@ -541,6 +726,43 @@
     "opsFlags": []
   },
   {
+    "id": "wikigames:grand-theft-auto-vi:game_release:출시",
+    "slug": "wikigames-grand-theft-auto-vi-game-release",
+    "title": "Grand Theft Auto VI",
+    "category": "game",
+    "categoryLabel": "게임",
+    "releaseAt": "2026-11-19",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "출시",
+    "status": "confirmed",
+    "tags": [
+      "게임",
+      "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "플랫폼",
+        "value": "PS5, Xbox Series X|S"
+      },
+      {
+        "label": "출처",
+        "value": "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+      }
+    ],
+    "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#November",
+    "description": "",
+    "lastVerifiedAt": "2026-10-17T03:08:00.795Z",
+    "endsAt": null,
+    "scheduleType": "game_release",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
     "id": "kpopping:2026-cute-anxiety:album_release:발매일",
     "slug": "kpopping-2026-cute-anxiety-album-release",
     "title": "Mujin Cute & Anxiety",
@@ -572,6 +794,117 @@
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Mujin",
+    "opsFlags": []
+  },
+  {
+    "id": "wikigames:dragon-quest-monsters-the-withered-world:game_release:출시",
+    "slug": "wikigames-dragon-quest-monsters-the-withered-world-game-release",
+    "title": "Dragon Quest Monsters: The Withered World",
+    "category": "game",
+    "categoryLabel": "게임",
+    "releaseAt": "2026-12-03",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "출시",
+    "status": "confirmed",
+    "tags": [
+      "게임",
+      "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "플랫폼",
+        "value": "PC, PS5, Xbox Series X|S, Nintendo Switch, Nintendo Switch 2"
+      },
+      {
+        "label": "출처",
+        "value": "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+      }
+    ],
+    "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
+    "description": "",
+    "lastVerifiedAt": "2026-10-17T03:08:00.795Z",
+    "endsAt": null,
+    "scheduleType": "game_release",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
+    "id": "wikigames:warhammer-40-000-dawn-of-war-iv:game_release:출시",
+    "slug": "wikigames-warhammer-40-000-dawn-of-war-iv-game-release",
+    "title": "Warhammer 40,000: Dawn of War IV",
+    "category": "game",
+    "categoryLabel": "게임",
+    "releaseAt": "2026-12-03",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "출시",
+    "status": "confirmed",
+    "tags": [
+      "게임",
+      "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "플랫폼",
+        "value": "PC"
+      },
+      {
+        "label": "출처",
+        "value": "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+      }
+    ],
+    "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
+    "description": "",
+    "lastVerifiedAt": "2026-10-17T03:08:00.795Z",
+    "endsAt": null,
+    "scheduleType": "game_release",
+    "entityName": null,
+    "opsFlags": []
+  },
+  {
+    "id": "wikigames:xenoblade-chronicles-3-nintendo-switch-2-eabd2c66:game_release:출시",
+    "slug": "wikigames-xenoblade-chronicles-3-nintendo-switch-2-eabd2c66-game-release",
+    "title": "Xenoblade Chronicles 3 – Nintendo Switch 2 Edition",
+    "category": "game",
+    "categoryLabel": "게임",
+    "releaseAt": "2026-12-03",
+    "releaseWindow": null,
+    "datePrecision": "exact_day",
+    "dateLabel": "출시",
+    "status": "confirmed",
+    "tags": [
+      "게임",
+      "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+    ],
+    "interestIds": [],
+    "thumbnail": "",
+    "gallery": [],
+    "meta": [
+      {
+        "label": "플랫폼",
+        "value": "Nintendo Switch 2"
+      },
+      {
+        "label": "출처",
+        "value": "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
+      }
+    ],
+    "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
+    "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
+    "description": "",
+    "lastVerifiedAt": "2026-10-17T03:08:00.795Z",
+    "endsAt": null,
+    "scheduleType": "game_release",
+    "entityName": null,
     "opsFlags": []
   }
 ]
