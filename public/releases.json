@@ -330,7 +330,8 @@
     "scheduleType": "ticket_open",
     "entityName": null,
     "opsFlags": [
-      "changed_after_approval"
+      "changed_after_approval",
+      "source_removed"
     ]
   },
   {
@@ -404,7 +405,9 @@
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Max Changmin",
-    "opsFlags": []
+    "opsFlags": [
+      "source_removed"
+    ]
   },
   {
     "id": "kpopping:2026-on-our-noise:album_release:발매일",
@@ -438,7 +441,9 @@
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "EVNNE",
-    "opsFlags": []
+    "opsFlags": [
+      "source_removed"
+    ]
   },
   {
     "id": "kpopping:2026-strange-muse:album_release:발매일",
@@ -472,7 +477,9 @@
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "NMIXX",
-    "opsFlags": []
+    "opsFlags": [
+      "source_removed"
+    ]
   },
   {
     "id": "wikigames:nintendo-switch-sports-resort:game_release:출시",
@@ -505,7 +512,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
+    "lastVerifiedAt": "2026-10-20T21:30:07.367Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -542,7 +549,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
+    "lastVerifiedAt": "2026-10-20T21:30:07.367Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -579,7 +586,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
+    "lastVerifiedAt": "2026-10-20T21:30:07.367Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -616,7 +623,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
+    "lastVerifiedAt": "2026-10-20T21:30:07.367Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -653,7 +660,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
+    "lastVerifiedAt": "2026-10-20T21:30:07.367Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -725,7 +732,7 @@
     "sourceName": "Wikipedia (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/2026_in_South_Korean_music#November",
     "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
+    "lastVerifiedAt": "2026-10-20T21:30:07.367Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Tomorrow X Together",
@@ -762,7 +769,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#November",
     "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
+    "lastVerifiedAt": "2026-10-20T21:30:07.367Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -796,7 +803,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-cute-anxiety",
     "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
+    "lastVerifiedAt": "2026-10-20T21:30:07.367Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Mujin",
@@ -833,7 +840,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
+    "lastVerifiedAt": "2026-10-20T21:30:07.367Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -870,7 +877,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
+    "lastVerifiedAt": "2026-10-20T21:30:07.367Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -907,7 +914,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
+    "lastVerifiedAt": "2026-10-20T21:30:07.367Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,

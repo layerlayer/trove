@@ -1,5 +1,5 @@
 {
-  "publishedAt": "2026-10-19T21:30:07.291Z",
+  "publishedAt": "2026-10-20T21:30:07.367Z",
   "count": 25,
   "byCategory": {
     "music": 11,
@@ -13,6 +13,6 @@
   },
   "held": 2,
   "skippedPast": 0,
-  "sourceRemoved": 10,
+  "sourceRemoved": 14,
   "hiddenDuplicates": 0
 }
