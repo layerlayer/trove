@@ -1,186 +1,5 @@
 [
   {
-    "id": "kpopping:2026-dont-stop:album_release:발매일",
-    "slug": "kpopping-2026-dont-stop-album-release",
-    "title": "TEEN TOP Dont Stop",
-    "category": "music",
-    "categoryLabel": "음악",
-    "releaseAt": "2026-10-15",
-    "releaseWindow": null,
-    "datePrecision": "exact_day",
-    "dateLabel": "발매일",
-    "status": "released",
-    "tags": [
-      "앨범",
-      "kpopping"
-    ],
-    "contentFormat": "미니 앨범",
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "출처",
-        "value": "kpopping"
-      }
-    ],
-    "sourceName": "kpopping",
-    "sourceUrl": "https://kpopping.com/musicalbum/2026-dont-stop",
-    "description": "",
-    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
-    "endsAt": null,
-    "scheduleType": "album_release",
-    "entityName": "TEEN TOP",
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
-    "id": "kpopping:2026-in-yeonhui-dong:album_release:발매일",
-    "slug": "kpopping-2026-in-yeonhui-dong-album-release",
-    "title": "Zion. T In Yeonhui-dong",
-    "category": "music",
-    "categoryLabel": "음악",
-    "releaseAt": "2026-10-15",
-    "releaseWindow": null,
-    "datePrecision": "exact_day",
-    "dateLabel": "발매일",
-    "status": "released",
-    "tags": [
-      "앨범",
-      "kpopping"
-    ],
-    "contentFormat": "싱글",
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "출처",
-        "value": "kpopping"
-      }
-    ],
-    "sourceName": "kpopping",
-    "sourceUrl": "https://kpopping.com/musicalbum/2026-in-yeonhui-dong",
-    "description": "",
-    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
-    "endsAt": null,
-    "scheduleType": "album_release",
-    "entityName": "Zion. T",
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
-    "id": "kpopping:2026-lost-found:album_release:발매일",
-    "slug": "kpopping-2026-lost-found-album-release",
-    "title": "Hyojung Lost & Found",
-    "category": "music",
-    "categoryLabel": "음악",
-    "releaseAt": "2026-10-15",
-    "releaseWindow": null,
-    "datePrecision": "exact_day",
-    "dateLabel": "발매일",
-    "status": "released",
-    "tags": [
-      "앨범",
-      "kpopping"
-    ],
-    "contentFormat": "미니 앨범",
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "출처",
-        "value": "kpopping"
-      }
-    ],
-    "sourceName": "kpopping",
-    "sourceUrl": "https://kpopping.com/musicalbum/2026-lost-found",
-    "description": "",
-    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
-    "endsAt": null,
-    "scheduleType": "album_release",
-    "entityName": "Hyojung",
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
-    "id": "kpopping:2026-star-trace-afro-remix-by-imlay:album_release:발매일",
-    "slug": "kpopping-2026-star-trace-afro-remix-by-imlay-album-release",
-    "title": "PLAVE Star Trace (Afro Remix by IMLAY)",
-    "category": "music",
-    "categoryLabel": "음악",
-    "releaseAt": "2026-10-15",
-    "releaseWindow": null,
-    "datePrecision": "exact_day",
-    "dateLabel": "발매일",
-    "status": "released",
-    "tags": [
-      "앨범",
-      "kpopping"
-    ],
-    "contentFormat": "싱글",
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "출처",
-        "value": "kpopping"
-      }
-    ],
-    "sourceName": "kpopping",
-    "sourceUrl": "https://kpopping.com/musicalbum/2026-star-trace-afro-remix-by-imlay",
-    "description": "",
-    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
-    "endsAt": null,
-    "scheduleType": "album_release",
-    "entityName": "PLAVE",
-    "opsFlags": [
-      "changed_after_approval",
-      "source_removed"
-    ]
-  },
-  {
-    "id": "kpopping:2026-tata-feat-minami-of-rescene:album_release:발매일",
-    "slug": "kpopping-2026-tata-feat-minami-of-rescene-album-release",
-    "title": "Loco TATA (feat. Minami of RESCENE)",
-    "category": "music",
-    "categoryLabel": "음악",
-    "releaseAt": "2026-10-15",
-    "releaseWindow": null,
-    "datePrecision": "exact_day",
-    "dateLabel": "발매일",
-    "status": "released",
-    "tags": [
-      "앨범",
-      "kpopping"
-    ],
-    "contentFormat": "싱글",
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "출처",
-        "value": "kpopping"
-      }
-    ],
-    "sourceName": "kpopping",
-    "sourceUrl": "https://kpopping.com/musicalbum/2026-tata-feat-minami-of-rescene",
-    "description": "",
-    "lastVerifiedAt": "2026-10-16T13:55:28.181Z",
-    "endsAt": null,
-    "scheduleType": "album_release",
-    "entityName": "Loco",
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
     "id": "kpopping:2026-next-chapter:album_release:발매일",
     "slug": "kpopping-2026-next-chapter-album-release",
     "title": "Hearts2Hearts Next Chapter",
@@ -491,7 +310,7 @@
     "releaseWindow": null,
     "datePrecision": "exact_day",
     "dateLabel": "출시",
-    "status": "confirmed",
+    "status": "released",
     "tags": [
       "게임",
       "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
@@ -512,7 +331,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-21T21:30:07.144Z",
+    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -549,7 +368,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-21T21:30:07.144Z",
+    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -586,7 +405,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-21T21:30:07.144Z",
+    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -623,7 +442,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-21T21:30:07.144Z",
+    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -660,7 +479,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-21T21:30:07.144Z",
+    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -732,7 +551,7 @@
     "sourceName": "Wikipedia (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/2026_in_South_Korean_music#November",
     "description": "",
-    "lastVerifiedAt": "2026-10-21T21:30:07.144Z",
+    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Tomorrow X Together",
@@ -769,7 +588,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#November",
     "description": "",
-    "lastVerifiedAt": "2026-10-21T21:30:07.144Z",
+    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -803,7 +622,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-cute-anxiety",
     "description": "",
-    "lastVerifiedAt": "2026-10-21T21:30:07.144Z",
+    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Mujin",
@@ -840,7 +659,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-21T21:30:07.144Z",
+    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -877,7 +696,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-21T21:30:07.144Z",
+    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -914,7 +733,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-21T21:30:07.144Z",
+    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,

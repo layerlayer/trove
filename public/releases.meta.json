@@ -1,18 +1,18 @@
 {
-  "publishedAt": "2026-10-21T21:30:07.144Z",
-  "count": 25,
+  "publishedAt": "2026-10-22T21:30:07.354Z",
+  "count": 20,
   "byCategory": {
-    "music": 11,
+    "music": 6,
     "concert": 5,
     "game": 9
   },
   "byStatus": {
-    "released": 13,
-    "confirmed": 11,
+    "released": 9,
+    "confirmed": 10,
     "tentative": 1
   },
   "held": 2,
-  "skippedPast": 0,
+  "skippedPast": 5,
   "sourceRemoved": 14,
   "hiddenDuplicates": 0
 }
