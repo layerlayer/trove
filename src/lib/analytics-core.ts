@@ -457,6 +457,8 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
   let own = new Map<string, { row: ServerEventRow; user: string | null }>();
   /** 이 탭이 마지막으로 쓴 토큰의 계정(토큰이 JWT 가 아니면 null) */
   let user: string | null = null;
+  /** 이 탭이 마지막으로 본 초기화 시각(CLEARED_KEY, 없으면 0) */
+  let seenCleared = clearedAt();
   let debounceTimer: unknown = null;
   let maxWaitTimer: unknown = null;
   let retryTimer: unknown = null;
@@ -512,6 +514,11 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
   }
 
   function keepOwn(rows: ServerEventRow[], front = false) {
+    // 초기화가 서버에서 아직 안 끝났거나(보내기 멈춤) 다른 탭이 새로 초기화했으면 기억한 계정은 초기화 전 것이다. 이때 넣는
+    // 행에는 계정을 붙이지 않아 다음 토큰의 계정을 받게 한다(옛 계정이 붙으면 옛 캐시 쓰기에 지워진 뒤 되살리지 못하고 버린다)
+    const cleared = clearedAt();
+    if (deps.isHeld() || cleared > seenCleared) user = null;
+    seenCleared = cleared;
     const entries = rows.map((row): [string, { row: ServerEventRow; user: string | null }] => [row.client_event_id, { row, user }]);
     if (front) own = new Map([...entries, ...own]);
     else entries.forEach(([id, entry]) => own.set(id, entry));
@@ -790,6 +797,7 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
       try {
         // 다른 탭이 들고 있던 초기화 전 기록이 큐에 되살아나 새 계정으로 가지 않게
         store.setItem(CLEARED_KEY, new Date((deps.now ?? Date.now)()).toISOString());
+        seenCleared = clearedAt();
       } catch {
         // 표시를 못 남겨도 초기화는 계속된다
       }

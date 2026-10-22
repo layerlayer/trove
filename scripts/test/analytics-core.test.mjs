@@ -990,6 +990,53 @@ describe("MVP 데이터 초기화", () => {
     assert.deepEqual(deletes, [1], "그 묶음이 들어간 뒤에 지운다");
     assert.equal(server.received("token-1").length, 0, "초기화 전 기록이 서버에 남지 않는다");
   });
+
+  test("서버 삭제가 끝나기 전에 다른 탭이 남긴 기록은, 옛 캐시 쓰기에 큐에서 지워져도 되살려 새 계정으로 보낸다", async () => {
+    const storage = sharedStorage();
+    const server = fakeServer();
+    let now = Date.parse("2026-10-22T00:00:00Z");
+    let token = jwt("user-1");
+    let held = false;
+    const tab = () =>
+      createEventPipeline({
+        store: storage.view(),
+        timers: fakeClock().timers,
+        getToken: async () => token,
+        peekToken: () => token,
+        post: (...args) => server.post(...args),
+        isHeld: () => held,
+        now: () => now,
+      });
+    const a = tab();
+    const b = tab();
+    b.enqueue(row("b_before", { now }));
+    await b.flush(); // b 는 user-1 을 기억한다
+    storage.deliver();
+
+    now += 1_000;
+    a.clear(); // a 에서 MVP 데이터 초기화: 서버 삭제가 끝날 때까지 보내기 멈춤
+    held = true;
+    storage.deliver();
+
+    now += 1_000;
+    b.enqueue(row("b_after_reset", { now }));
+    await b.flush(); // 멈춰 있어 저장 큐에만 남는다
+    a.enqueue(row("a_after_reset", { now }));
+    await a.flush(); // a 는 b 의 쓰기를 아직 못 본 캐시로 큐를 쓴다
+    storage.deliver();
+    assert.deepEqual(storage.stored().map((r) => r.name), ["a_after_reset"], "나중 쓰기가 b 의 행을 덮었다");
+
+    held = false;
+    token = jwt("user-2"); // 삭제·로그아웃 뒤 새 익명 계정
+    await a.flush();
+    storage.deliver();
+    await b.flush();
+    storage.deliver();
+    assert.deepEqual(server.received(jwt("user-2")).map((r) => r.name).sort(), ["a_after_reset", "b_after_reset"], "b 의 초기화 뒤 기록도 새 계정으로 간다");
+    assert.deepEqual(server.received(jwt("user-1")).map((r) => r.name), ["b_before"], "옛 계정에는 새 기록이 가지 않는다");
+    assert.equal(a.pendingCount() + b.pendingCount(), 0);
+    assert.deepEqual(storage.stored(), []);
+  });
 });
 
 describe("로컬 전용 모드(Supabase 환경 변수 없음)", () => {
