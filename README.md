@@ -80,6 +80,64 @@ npm run data:push:uninstall
 
 안전장치: 발행물이 0건이거나 마지막으로 커밋된 것보다 절반 넘게 줄어들면 반영하지 않고 로그에 남깁니다(정말 의도한 경우 `npm run data:push -- --allow-empty` 또는 `-- --allow-shrink`). 커밋에는 `public/releases.json` 과 `public/releases.meta.json` 두 파일만 들어가며, 앱 폴더의 다른 수정 사항은 건드리지 않습니다(이 두 파일에 커밋되지 않은 변경이 남아 있으면 발행물로 덮어쓰기 전에 되돌립니다). 로컬에 직접 만든 미푸시 커밋이 있으면 그것을 먼저 푸시하라고 알리고 멈춥니다. 지난 실행이 푸시하지 못한 발행 커밋만 남아 있을 때 원격이 앞서 나가 있으면, 그 커밋을 원격 위로 올려 다시 푸시합니다. 주기는 `TROVE_PUSH_INTERVAL=300 npm run data:push:install` 처럼 초 단위로 바꿀 수 있고, 발행물 폴더가 기본 위치(`trove-ops/data`)가 아니면 `TROVE_OPS_DATA_DIR=/path npm run data:push:install` 로 함께 넣습니다. 원격 이름이 `origin` 이 아니거나 브랜치가 `main` 이 아니면 `TROVE_PUSH_REMOTE=…`, `TROVE_PUSH_BRANCH=…` 도 같은 방식으로 함께 넣습니다.
 
+## 서버 (Supabase) — 1단계: 사용 기록
+
+이번 단계에서 서버로 가는 것은 **앱 안 사용 기록(`track()` 이벤트)뿐**입니다. 관심사·담은 기다림·알림 설정·데모 로그인은 지금처럼 이 브라우저의 localStorage 에만 있습니다. 앱을 처음 열면 화면에 아무것도 띄우지 않고 Supabase 익명 계정을 하나 만들고, 사용 기록은 그 계정에 묶여 `public.events` 에 쌓입니다.
+
+### Seo 가 할 일 (한 번)
+
+1. Supabase → New project: 이름 `trove`, 리전 **Seoul (ap-northeast-2)**. DB 비밀번호는 비밀번호 관리자에만 저장합니다.
+2. Authentication → Sign In / Providers → **Anonymous sign-ins** 를 켭니다. (Email·Manual linking 은 2단계 로그인 때 켭니다.)
+3. SQL Editor → New query 에 `supabase/migrations/0001_init.sql` 내용을 통째로 붙여 **Run**, 이어서 `supabase/admin-views.sql` 도 같은 방법으로 **Run**. 두 파일 모두 한 트랜잭션이라 중간에 실패하면 아무것도 바뀌지 않고, 다시 실행해도 안전합니다(쌓인 데이터는 그대로). SQL 은 코드라 붙여도 괜찮습니다. 키가 아닙니다.
+4. Project Settings → API Keys 의 **Publishable key**(`sb_publishable_…`)와 Project Settings → Data API 의 Project URL(`https://<ref>.supabase.co`)을 복사해 Vercel → Settings → Environment Variables 에 넣습니다. Environments 는 **Production 과 Preview** 둘 다 고릅니다.
+   - `VITE_SUPABASE_URL` = Project URL
+   - `VITE_SUPABASE_PUBLISHABLE_KEY` = Publishable key
+5. Vercel → Deployments → 맨 위 배포의 ⋯ → **Redeploy**. 환경 변수는 빌드 때 앱에 들어가므로 다시 배포해야 반영됩니다. 앱 버전(`app_version`)은 Vercel 이 주는 커밋 앞 7자리가 자동으로 붙습니다.
+6. Advisors → Security Advisor 에서 빨간(ERROR) 경고가 없는지 봅니다. 노란 경고 중 "익명 사용자에게도 적용되는 정책(anonymous access)" 과 "로그인 사용자가 security definer 함수(`delete_my_data`, `register_push_subscription`)를 실행할 수 있음" 은 의도한 것입니다.
+
+키 다루기:
+
+- 키는 채팅·이슈·커밋에 붙이지 않고 Vercel 화면에 직접 넣습니다. Publishable key 는 앱에 그대로 실리는 공개용이지만 습관으로 지킵니다.
+- **Secret key(`sb_secret_…`)·service_role 키는 앱 어디에도 넣지 않습니다.** 특히 `VITE_` 로 시작하는 이름에 넣으면 빌드 결과에 그대로 박혀 누구나 봅니다. 새어 나갔다고 생각되면 API Keys 에서 새로 만들고 옛 키를 끕니다.
+- Project Settings → Data API → Exposed schemas 에 `admin` 을 넣지 않습니다. 요약 보기는 대시보드에서만 봅니다.
+
+### 데이터 보는 곳
+
+- **Table Editor**: `events`(사용 기록 원본), `profiles` 등 원본 표.
+- **SQL Editor**: `select * from admin.testers;` 처럼 실행합니다. 자주 쓰는 것은 Save 해 두면 다음부터 한 번에 열립니다.
+  - `admin.testers` 테스터 한 명당 한 줄(처음·마지막 방문, 방문한 날 수, 최근 7일 이벤트, 담기·팔로우·알림 수, 홈 화면 앱 여부, 운영체제·브라우저, 앱 안 브라우저로 연 적 있는지). 기록이 하나도 없는 익명 계정(초기화 직후 등)은 뺍니다.
+  - `admin.daily` 한국 날짜별 방문자·이벤트·새 담기 수(푸시 열은 푸시를 붙인 뒤부터 채워집니다)
+  - `admin.funnel` 방문 → 관심사 고름 → 첫 담기 → 로그인 → 알림 허용 → 푸시 눌러 들어옴, 단계별 인원
+  - `admin.recent_events` 최근 이벤트 500개, `admin.push_log` 푸시 기록(푸시를 붙인 뒤부터)
+- **본인 기기 빼기**: 본인 기기에서 발견 탭에 남이 칠 리 없는 검색어(예: `seo-내기기`)를 한 번 넣고, 몇 초 뒤 SQL Editor 에서 실행합니다.
+
+  ```sql
+  update public.profiles set is_internal = true
+  where id in (select user_id from public.events
+               where name = 'discover_search' and properties->>'query' = 'seo-내기기');
+  ```
+
+  기기마다 한 번씩 하고, 그 기기에서 MVP 데이터 초기화를 하면 새 임시 계정이 생기므로 다시 합니다. `testers`·`daily`·`funnel` 에서 빠지고, `recent_events`·`push_log` 에는 `internal` 열로 표시됩니다.
+- 무료 플랜은 자동 백업이 없습니다. 테스트 중에는 주 1회 `admin.testers` 와 `events` 를 CSV 로 받아 둡니다(Table Editor › Export, 또는 SQL Editor 결과의 Export).
+
+### 서버 없이 돌 때 (로컬 전용)
+
+`VITE_SUPABASE_URL` 이나 `VITE_SUPABASE_PUBLISHABLE_KEY` 가 하나라도 비어 있으면(로컬 `npm run dev` 기본값, 환경 변수를 안 넣은 배포) 앱은 서버를 전혀 부르지 않습니다. Supabase 코드는 따로 떨어진 조각이라 내려받지도 않고, 사용 기록은 예전처럼 브라우저의 `trove-analytics-v1` 에 최근 200개만 남습니다. 서버가 켜진 빌드를 처음 열면 이 기록을 한 번만 서버로 옮기고(`properties.migrated = true`) 지웁니다. 로컬에서 서버까지 붙여 보려면 두 값을 `.env.local`(커밋되지 않음)에 넣습니다.
+
+동작 요약:
+
+- `src/lib/supabase.ts` 클라이언트(필요할 때만 불러옴)와 익명 세션. 세션이 없을 때만, 여러 탭·새로고침에서도 한 번만 만들고, 화면을 막지 않으며, 실패하면 조금 뒤 다시 합니다.
+- `src/lib/analytics-core.ts` 묶음 전송(3초 모아서, 또는 화면이 숨겨지거나 닫힐 때 keepalive), 재시도 큐(localStorage `trove-events-queue-v1`, 최대 500개, 넘치면 오래된 것부터 버림), 공통 필드(기기 ID, 30분 쉬면 바뀌는 방문 ID, 경로, 홈 화면 앱 여부, 앱 버전, 브라우저 요약), 검색어 앞 100자만 보냄, 같은 기록이 두 번 들어가지 않게 `client_event_id`.
+- 프로필 → MVP 데이터 초기화: 서버의 `delete_my_data()` 로 내 기록을 지우고 로그아웃한 뒤, 다음 기록 때 새 임시 계정을 만듭니다. 인터넷이 안 되면 다음에 앱을 열 때 마저 지우고, 그동안 새 기록은 보내지 않고 모아 둡니다.
+
+### 시험
+
+- `npm test` 앱 시험과 분석 로직 시험(가짜 시계·가짜 서버, 네트워크 없음).
+- `npm run test:db` 임시 PostgreSQL(15 이상) 을 띄워 Supabase 흉내(`auth` 스키마, `anon`·`authenticated`·`service_role` 역할) 위에 두 SQL 을 돌리고 보안 규칙을 확인합니다. 남의 행은 못 보고·못 고치고·못 지움, `events` 는 넣기만 되고 `user_id` 를 속일 수 없음, 로그인 전(anon)은 아무것도 못 함, `is_internal` 은 앱에서 못 바꿈, `delete_my_data` 는 내 것만, `admin` 은 앱에서 안 보임 등. Supabase 의 예전 자동 권한 방식과 새 방식으로 두 번 돕니다. `npm test`·Vercel 빌드에는 들어가지 않고, PostgreSQL 이 없으면 이유를 말하고 건너뜁니다.
+  - 맥: `brew install postgresql@16` 뒤 `PG_BIN=$(brew --prefix postgresql@16)/bin npm run test:db`
+  - root 로 돌리면 서버는 `PG_RUN_AS`(기본 `postgres`) 사용자로 띄웁니다.
+- `npm run smoke` Playwright(Chromium)로 실제 빌드를 띄워 봅니다. 실제 Supabase 에는 접속하지 않습니다. (a) 환경 변수 없이: 홈이 뜨고 다른 주소로는 요청이 하나도 없음 (b) 가짜 Supabase 서버(`scripts/smoke/mock-supabase.mjs`)를 향하게: 익명 가입은 한 번, 묶음 전송과 공통 필드, 500 뒤 재전송, 탭 닫을 때 keepalive, 초기화 (c) 개발 서버(StrictMode)에서도 가입 한 번. Playwright 는 이 저장소 의존성이 아니라서 `npm i -g playwright && npx playwright install chromium` 처럼 전역에 깔아 두거나 `PLAYWRIGHT_MODULE=<playwright 폴더>` 로 위치를 알려 줍니다.
+
 ## 구현된 흐름
 
 - 관심사 검색·선택 및 선택값 저장
@@ -93,7 +151,7 @@ npm run data:push:uninstall
 - D-7, D-1, 당일 및 출시일 확정·변경 알림 프리셋
 - 관심사·기본 알림·브라우저 알림·계정을 관리하는 Profile
 - 기본 서비스 워커와 웹푸시 수신 진입점
-- 행동 이벤트를 브라우저에 기록하는 MVP 분석 계층
+- 행동 이벤트를 묶어 Supabase 에 보내는 분석 계층(환경 변수가 없으면 브라우저에만 기록)
 - 새로고침 후에도 유지되는 버전 관리형 로컬 상태
 - 360×780 모바일 레이아웃과 430px 데스크톱 앱 셸
 
@@ -111,5 +169,5 @@ npm run data:push:uninstall
 
 출시 데이터는 위 `데이터` 절대로 `public/releases.json`(운영 콘솔 발행물) 에서 오고, 앱 쪽 변환 규칙은 `src/data/published.ts` 에 있습니다. 날짜 확정 콘텐츠뿐 아니라 날짜 미정·예정 시기, 상태, 출처, 마지막 확인 일시를 표현할 수 있습니다.
 
-회원 인증과 상태 저장은 제품 흐름 검증을 위한 브라우저 로컬 구현입니다. 실제 Supabase Auth/DB, 헤르메스 XLSX → staging → 관리자 승인 콘솔, 푸시 구독 키와 예약 발송, 결제는 서버 자격증명과 관리자 권한 정책을 연결한 뒤 추가해야 합니다. 공개 배포에서 URL만 숨긴 운영 콘솔은 보안 기능이 아니므로 현재 버전에는 포함하지 않았습니다.
+회원 인증과 상태 저장은 제품 흐름 검증을 위한 브라우저 로컬 구현입니다(서버로 가는 것은 위 "서버 (Supabase) — 1단계" 의 사용 기록뿐). 이메일 로그인과 상태 동기화(Supabase Auth/DB), 헤르메스 XLSX → staging → 관리자 승인 콘솔, 푸시 구독 키와 예약 발송, 결제는 서버 자격증명과 관리자 권한 정책을 연결한 뒤 추가해야 합니다. 공개 배포에서 URL만 숨긴 운영 콘솔은 보안 기능이 아니므로 현재 버전에는 포함하지 않았습니다.
 # trove

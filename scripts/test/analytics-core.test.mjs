@@ -1,0 +1,621 @@
+/**
+ * src/lib/analytics-core.ts 시험(사용 기록 큐·묶어 보내기·재시도·세션·브라우저 요약·이관·초기화 흐름).
+ * Node 의 타입 지우기로 .ts 를 그대로 불러온다(Node 22.18+ / 24). DOM·Vite·네트워크 없이 돈다:
+ * 타이머는 가짜 시계, 보내기는 가짜 서버(같은 client_event_id 는 409, 계정별로 모음)로 바꿔 끼운다.
+ */
+import assert from "node:assert/strict";
+import { describe, test } from "node:test";
+import {
+  BATCH_MAX,
+  capQueue,
+  classifyResponse,
+  createAnalytics,
+  createEventPipeline,
+  createMemoryStore,
+  createRow,
+  DEVICE_KEY,
+  displayModeOf,
+  FLUSH_DEBOUNCE_MS,
+  FLUSH_MAX_WAIT_MS,
+  KEEPALIVE_MAX_BYTES,
+  LEGACY_KEY,
+  migrationFlagKey,
+  nextSession,
+  QUEUE_KEY,
+  QUEUE_MAX,
+  readQueue,
+  RESET_PENDING_KEY,
+  resolveServerConfig,
+  sanitizeProperties,
+  SESSION_IDLE_MS,
+  summarizeBrowser,
+  truncateChars,
+  uuidFromBytes,
+  writeQueue,
+} from "../../src/lib/analytics-core.ts";
+
+// ---------------------------------------------------------------------------
+// 도우미
+
+async function settle() {
+  for (let i = 0; i < 20; i += 1) await new Promise((resolve) => setImmediate(resolve));
+}
+
+function fakeClock(start = Date.parse("2026-10-22T00:00:00Z")) {
+  let now = start;
+  let seq = 0;
+  const pending = new Map();
+  return {
+    now: () => now,
+    timers: {
+      set(callback, ms) {
+        seq += 1;
+        pending.set(seq, { at: now + ms, callback });
+        return seq;
+      },
+      clear(id) {
+        pending.delete(id);
+      },
+    },
+    /** ms 만큼 시간을 보내며 그 사이 타이머를 순서대로 실행한다 */
+    async advance(ms) {
+      const target = now + ms;
+      for (;;) {
+        const next = [...pending.entries()].sort((a, b) => a[1].at - b[1].at)[0];
+        if (!next || next[1].at > target) break;
+        pending.delete(next[0]);
+        now = next[1].at;
+        next[1].callback();
+        await settle();
+      }
+      now = target;
+      await settle();
+    },
+    delays: () => [...pending.values()].map((entry) => entry.at - now).sort((a, b) => a - b),
+  };
+}
+
+let counter = 0;
+function id() {
+  counter += 1;
+  return `00000000-0000-4000-8000-${String(counter).padStart(12, "0")}`;
+}
+
+function row(name = "home_view", extra = {}) {
+  return createRow(name, extra.properties ?? {}, {
+    now: Date.parse("2026-10-22T00:00:00Z"),
+    clientEventId: extra.clientEventId ?? id(),
+    deviceId: "device-1",
+    sessionId: "session-1",
+    path: "/home",
+    displayMode: "browser",
+    appVersion: "abc1234",
+    client: { os: "ios", browser: "safari", in_app: null },
+  });
+}
+
+/** 가짜 Supabase events 표: 토큰별(=계정별)로 모으고, 같은 client_event_id 는 409 */
+function fakeServer() {
+  const server = {
+    status: 201,
+    code: null,
+    calls: [],
+    byToken: new Map(),
+    rejectNames: new Set(),
+    async post(rows, token, keepalive) {
+      server.calls.push({ count: rows.length, token, keepalive, ids: rows.map((r) => r.client_event_id) });
+      if (server.status !== 201) return { status: server.status, code: server.code };
+      if (rows.some((r) => server.rejectNames.has(r.name))) return { status: 400, code: "23514" };
+      const stored = server.byToken.get(token) ?? [];
+      if (rows.some((r) => stored.some((s) => s.client_event_id === r.client_event_id))) return { status: 409, code: "23505" };
+      stored.push(...rows);
+      server.byToken.set(token, stored);
+      return { status: 201 };
+    },
+    received(token = "token-1") {
+      return server.byToken.get(token) ?? [];
+    },
+  };
+  return server;
+}
+
+function pipelineWith(overrides = {}) {
+  const clock = fakeClock();
+  const store = createMemoryStore();
+  const server = fakeServer();
+  let token = "token-1";
+  let held = false;
+  const pipeline = createEventPipeline({
+    store,
+    timers: clock.timers,
+    getToken: async () => token,
+    peekToken: () => token,
+    post: (...args) => server.post(...args),
+    isHeld: () => held,
+    ...overrides,
+  });
+  return {
+    clock,
+    store,
+    server,
+    pipeline,
+    setToken: (value) => (token = value),
+    setHeld: (value) => (held = value),
+  };
+}
+
+// ---------------------------------------------------------------------------
+
+describe("큐", () => {
+  test("500개를 넘으면 오래된 것부터 버린다", () => {
+    assert.deepEqual(capQueue([1, 2, 3, 4], 3), [2, 3, 4]);
+    const store = createMemoryStore();
+    const rows = Array.from({ length: QUEUE_MAX + 10 }, () => row());
+    writeQueue(store, rows);
+    const kept = readQueue(store);
+    assert.equal(kept.length, QUEUE_MAX);
+    assert.equal(kept[0].client_event_id, rows[10].client_event_id);
+    assert.equal(kept.at(-1).client_event_id, rows.at(-1).client_event_id);
+  });
+
+  test("깨진 저장값은 빈 큐로 읽고, 비우면 키를 지운다", () => {
+    const store = createMemoryStore();
+    store.setItem(QUEUE_KEY, "{not json");
+    assert.deepEqual(readQueue(store), []);
+    store.setItem(QUEUE_KEY, JSON.stringify([{ nope: true }, row()]));
+    assert.equal(readQueue(store).length, 1);
+    writeQueue(store, []);
+    assert.equal(store.getItem(QUEUE_KEY), null);
+  });
+});
+
+describe("묶어 보내기", () => {
+  test("기록 직후에는 보내지 않고, 마지막 기록 3초 뒤 한 요청으로 보낸다", async () => {
+    const { clock, server, pipeline } = pipelineWith();
+    pipeline.enqueue(row("app_open"));
+    pipeline.enqueue(row("home_view"));
+    await clock.advance(FLUSH_DEBOUNCE_MS - 1);
+    assert.equal(server.calls.length, 0);
+    await clock.advance(1);
+    assert.deepEqual(server.calls.map((call) => [call.count, call.keepalive]), [[2, false]]);
+    assert.deepEqual(server.received().map((r) => r.name), ["app_open", "home_view"]);
+    assert.equal(pipeline.pendingCount(), 0);
+  });
+
+  test("기록이 계속 이어져도 첫 기록 뒤 15초 안에는 보낸다", async () => {
+    const { clock, server, pipeline } = pipelineWith();
+    for (let elapsed = 0; elapsed < FLUSH_MAX_WAIT_MS; elapsed += 2_000) {
+      pipeline.enqueue(row());
+      await clock.advance(2_000);
+      if (elapsed + 2_000 < FLUSH_MAX_WAIT_MS) assert.equal(server.calls.length, 0, `${elapsed + 2_000}ms 에는 아직`);
+    }
+    assert.equal(server.calls.length, 1);
+    assert.equal(server.calls[0].count, 8);
+  });
+
+  test("100개가 모이면 기다리지 않고 바로 보낸다", async () => {
+    const { server, pipeline } = pipelineWith();
+    for (let i = 0; i < BATCH_MAX; i += 1) pipeline.enqueue(row());
+    await settle();
+    assert.deepEqual(server.calls.map((call) => call.count), [BATCH_MAX]);
+  });
+
+  test("밀린 250개는 100·100·50 으로 나눠 보낸다", async () => {
+    const { store, server, pipeline } = pipelineWith();
+    writeQueue(store, Array.from({ length: 250 }, () => row()));
+    await pipeline.flush();
+    assert.deepEqual(server.calls.map((call) => call.count), [100, 100, 50]);
+    assert.equal(server.received().length, 250);
+  });
+});
+
+describe("세션이 없을 때 · 실패했을 때", () => {
+  test("세션(토큰)이 생길 때까지 저장 큐에서 기다렸다가 보낸다", async () => {
+    const { clock, store, server, pipeline, setToken } = pipelineWith();
+    setToken(null);
+    pipeline.enqueue(row("app_open"));
+    await clock.advance(FLUSH_DEBOUNCE_MS);
+    assert.equal(server.calls.length, 0);
+    assert.equal(readQueue(store).length, 1, "보내기 전에 localStorage 큐로 옮겨 둔다");
+    setToken("token-1");
+    await clock.advance(5_000); // 첫 재시도
+    assert.equal(server.received().length, 1);
+    assert.equal(store.getItem(QUEUE_KEY), null);
+  });
+
+  test("500 이 오면 저장 큐에 남기고 5초·15초… 뒤 다시 보내 결국 도착한다", async () => {
+    const { clock, store, server, pipeline } = pipelineWith();
+    server.status = 500;
+    pipeline.enqueue(row("item_view"));
+    await clock.advance(FLUSH_DEBOUNCE_MS);
+    assert.equal(server.calls.length, 1);
+    assert.equal(readQueue(store).length, 1);
+    assert.deepEqual(clock.delays(), [5_000]);
+    await clock.advance(5_000);
+    assert.equal(server.calls.length, 2);
+    assert.deepEqual(clock.delays(), [15_000]);
+    server.status = 201;
+    await clock.advance(15_000);
+    assert.deepEqual(server.received().map((r) => r.name), ["item_view"]);
+    assert.equal(readQueue(store).length, 0);
+  });
+
+  test("계속 실패하면 저장 큐는 500개에서 멈추고 오래된 것부터 버린다", async () => {
+    const { store, server, pipeline } = pipelineWith();
+    server.status = 503;
+    const rows = Array.from({ length: 620 }, (_, i) => row("feed_more", { properties: { i } }));
+    for (const r of rows) pipeline.enqueue(r);
+    await settle();
+    await pipeline.flush();
+    const kept = readQueue(store);
+    assert.equal(kept.length, QUEUE_MAX);
+    assert.equal(kept[0].properties.i, 120);
+    assert.equal(kept.at(-1).properties.i, 619);
+  });
+
+  test("이미 들어간 기록(409)은 반으로 나눠 다시 보내 중복만 버린다", async () => {
+    const { store, server, pipeline } = pipelineWith();
+    const already = row("app_open");
+    await server.post([already], "token-1", false);
+    server.calls.length = 0;
+    writeQueue(store, [row("home_view"), already, row("item_view"), row("feed_more")]);
+    await pipeline.flush();
+    assert.deepEqual(server.received().map((r) => r.name).sort(), ["app_open", "feed_more", "home_view", "item_view"]);
+    assert.equal(server.received().length, 4, "app_open 이 두 번 들어가지 않는다");
+    assert.equal(readQueue(store).length, 0);
+  });
+
+  test("DB 제한에 걸리는 행(400·23514)만 버리고 나머지는 보낸다", async () => {
+    const { store, server, pipeline } = pipelineWith();
+    server.rejectNames.add("bad_event");
+    writeQueue(store, [row("home_view"), row("bad_event"), row("item_view")]);
+    await pipeline.flush();
+    assert.deepEqual(server.received().map((r) => r.name), ["home_view", "item_view"]);
+    assert.equal(readQueue(store).length, 0);
+  });
+
+  test("표가 없거나 스키마가 다르면(404, 400 PGRST…) 버리지 않고 기다린다", () => {
+    assert.equal(classifyResponse(201), "ok");
+    assert.equal(classifyResponse(409, "23505"), "duplicate");
+    assert.equal(classifyResponse(400, "23514"), "reject");
+    assert.equal(classifyResponse(400, "22001"), "reject");
+    assert.equal(classifyResponse(413), "reject");
+    for (const [status, code] of [[0], [400, "PGRST204"], [401, "PGRST301"], [403, "42501"], [404, "PGRST205"], [429], [500], [503]]) {
+      assert.equal(classifyResponse(status, code), "retry", `${status} ${code ?? ""}`);
+    }
+  });
+});
+
+describe("화면이 숨겨지거나 닫힐 때", () => {
+  test("기다리지 않고 keepalive 요청으로 바로 보내고, 그 전에 저장 큐에 옮겨 둔다", async () => {
+    const { store, server, pipeline } = pipelineWith();
+    pipeline.enqueue(row("item_view"));
+    pipeline.flushOnHide();
+    assert.equal(server.calls.length, 1, "같은 틱 안에서 보낸다");
+    assert.equal(server.calls[0].keepalive, true);
+    assert.equal(readQueue(store).length, 1, "응답 전까지는 큐에 남아 있다(페이지가 죽어도 다음에 보낸다)");
+    await settle();
+    assert.equal(readQueue(store).length, 0);
+    assert.equal(server.received().length, 1);
+  });
+
+  test("손에 든 토큰이 없으면 보내지 않고 저장만 한다", () => {
+    const { store, server, pipeline } = pipelineWith({ peekToken: () => null });
+    pipeline.enqueue(row());
+    pipeline.flushOnHide();
+    assert.equal(server.calls.length, 0);
+    assert.equal(readQueue(store).length, 1);
+  });
+
+  test("keepalive 몸통은 60KB 를 넘지 않는다", () => {
+    const { store, server, pipeline } = pipelineWith();
+    const heavy = Array.from({ length: 80 }, () => row("discover_search", { properties: { a: "가".repeat(200), b: "나".repeat(200) } }));
+    writeQueue(store, heavy);
+    pipeline.flushOnHide();
+    assert.equal(server.calls.length, 1);
+    const sent = server.calls[0].count;
+    assert.ok(sent < heavy.length, `${sent}개만`);
+    const bytes = Buffer.byteLength(JSON.stringify(heavy.slice(0, sent)));
+    assert.ok(bytes <= KEEPALIVE_MAX_BYTES, `${bytes} bytes`);
+  });
+
+  test("keepalive 로 실어 보낸 행은 응답 전에 일반 flush 가 또 싣지 않는다", async () => {
+    let release;
+    const server = fakeServer();
+    const { store, pipeline } = pipelineWith({
+      post: (rows, token, keepalive) =>
+        keepalive ? new Promise((resolve) => (release = () => resolve(server.post(rows, token, keepalive)))) : server.post(rows, token, keepalive),
+    });
+    pipeline.enqueue(row("a_one"));
+    pipeline.flushOnHide();
+    await pipeline.flush();
+    assert.equal(server.calls.length, 0);
+    release();
+    await settle();
+    assert.equal(server.received().length, 1);
+    assert.equal(readQueue(store).length, 0);
+  });
+});
+
+describe("세션 id · 공통 필드", () => {
+  test("30분 넘게 조용하면 새 세션, 그 안이면 같은 세션", () => {
+    const first = nextSession(null, 1_000, () => "s1");
+    assert.deepEqual(first, { id: "s1", lastAt: 1_000 });
+    const same = nextSession(first, 1_000 + SESSION_IDLE_MS - 1, () => "s2");
+    assert.equal(same.id, "s1");
+    const rotated = nextSession(same, same.lastAt + SESSION_IDLE_MS, () => "s3");
+    assert.equal(rotated.id, "s3");
+  });
+
+  test("브라우저 요약: OS·브라우저 계열·앱 안 브라우저만", () => {
+    const cases = [
+      ["Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1", 5, ["ios", "safari", null]],
+      ["Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148", 5, ["ios", "safari", null]],
+      ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15", 5, ["ios", "safari", null]],
+      ["Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15", 0, ["mac", "safari", null]],
+      ["Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Mobile Safari/537.36", 5, ["android", "chrome", null]],
+      ["Mozilla/5.0 (Linux; Android 14; SM-S921N) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/28.0 Chrome/130.0.0.0 Mobile Safari/537.36", 5, ["android", "samsung", null]],
+      ["Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK 25.8.0", 5, ["ios", "safari", "kakaotalk"]],
+      ["Mozilla/5.0 (Linux; Android 14; SM-S921N Build/UP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0 Mobile Safari/537.36 KAKAOTALK/25.8.0 (INAPP)", 5, ["android", "chrome", "kakaotalk"]],
+      ["Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 400.0.0.0", 5, ["ios", "safari", "instagram"]],
+      ["Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 NAVER(inapp; search; 2000; 12.10.1)", 5, ["ios", "safari", "naver"]],
+      ["Mozilla/5.0 (Linux; Android 14; SM-S921N; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0 Mobile Safari/537.36", 5, ["android", "chrome", "webview"]],
+      ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 Edg/141.0.0.0", 0, ["windows", "edge", null]],
+      ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Whale/4.33.0 Safari/537.36", 0, ["windows", "whale", null]],
+      ["Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) FxiOS/141.0 Mobile/15E148 Safari/605.1.15", 5, ["ios", "firefox", null]],
+      ["Mozilla/5.0 (X11; Linux x86_64; rv:141.0) Gecko/20100101 Firefox/141.0", 0, ["other", "firefox", null]],
+      ["", 0, ["other", "other", null]],
+    ];
+    for (const [ua, touch, [os, browser, inApp]] of cases) {
+      assert.deepEqual(summarizeBrowser(ua, touch), { os, browser, in_app: inApp }, ua);
+    }
+  });
+
+  test("화면 모드: standalone(홈 화면 앱) / browser", () => {
+    assert.equal(displayModeOf(true, undefined), "standalone");
+    assert.equal(displayModeOf(false, true), "standalone");
+    assert.equal(displayModeOf(false, false), "browser");
+    assert.equal(displayModeOf(false, undefined), "browser");
+  });
+
+  test("검색어는 100자(글자 단위, 이모지가 반쪽 나지 않게), 다른 문자열은 200자에서 자른다", () => {
+    const query = "🎵".repeat(60) + "가".repeat(80);
+    const cleaned = sanitizeProperties("discover_search", { query, other: "x".repeat(300) });
+    assert.equal(Array.from(cleaned.query).length, 100);
+    assert.equal(cleaned.query, "🎵".repeat(60) + "가".repeat(40));
+    assert.equal(cleaned.other.length, 200);
+    assert.equal(sanitizeProperties("item_view", { query: "y".repeat(150) }).query.length, 150, "다른 이벤트의 query 는 200자까지");
+    assert.equal(truncateChars("abc", 5), "abc");
+  });
+
+  test("속성은 문자열·숫자·참거짓만, 너무 크면 {truncated:true}", () => {
+    assert.deepEqual(sanitizeProperties("x", { a: 1, b: NaN, c: Infinity, d: true, e: { nested: 1 }, f: null, g: "ok" }), { a: 1, d: true, g: "ok" });
+    const many = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`key_${i}`, "가".repeat(50)]));
+    assert.deepEqual(sanitizeProperties("x", many), { truncated: true });
+    assert.deepEqual(sanitizeProperties("x", undefined), {});
+  });
+
+  test("uuidFromBytes 는 v4 형식", () => {
+    const value = uuidFromBytes(new Uint8Array(16).fill(255));
+    assert.match(value, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  });
+
+  test("서버 설정은 URL·키가 둘 다 있을 때만", () => {
+    assert.equal(resolveServerConfig(undefined, undefined), null);
+    assert.equal(resolveServerConfig("https://x.supabase.co", ""), null);
+    assert.equal(resolveServerConfig("", "sb_publishable_x"), null);
+    assert.equal(resolveServerConfig("  ", " sb_publishable_x "), null);
+    assert.deepEqual(resolveServerConfig(" https://x.supabase.co/ ", " sb_publishable_x "), { url: "https://x.supabase.co", key: "sb_publishable_x" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createAnalytics: track → 행, 이관, 초기화, 로컬 전용 모드
+
+function analyticsWith({ serverMode = true, deleteOutcomes = ["done"], ...overrides } = {}) {
+  const clock = fakeClock();
+  const store = createMemoryStore();
+  const server = fakeServer();
+  const calls = { getToken: 0, peekToken: 0, post: 0, ensureSession: 0, delete: 0 };
+  let token = "token-1";
+  let path = "/home";
+  const order = [];
+  const analytics = createAnalytics({
+    serverMode,
+    store,
+    timers: clock.timers,
+    now: clock.now,
+    newId: id,
+    context: () => ({ path, displayMode: "standalone", client: { os: "android", browser: "chrome", in_app: "kakaotalk" } }),
+    appVersion: "abc1234",
+    getToken: async () => {
+      calls.getToken += 1;
+      return token;
+    },
+    peekToken: () => {
+      calls.peekToken += 1;
+      return token;
+    },
+    post: async (...args) => {
+      calls.post += 1;
+      order.push(`post:${args[1]}`);
+      return server.post(...args);
+    },
+    ensureSession: async () => {
+      calls.ensureSession += 1;
+      return token ? { access_token: token } : null;
+    },
+    deleteServerDataAndSignOut: async () => {
+      calls.delete += 1;
+      order.push(`delete:${token}`);
+      const outcome = deleteOutcomes.shift() ?? "done";
+      if (outcome === "done") token = "token-2"; // 로그아웃 뒤 새 익명 세션
+      return outcome;
+    },
+    ...overrides,
+  });
+  return { analytics, clock, store, server, calls, order, setToken: (value) => (token = value), setPath: (value) => (path = value) };
+}
+
+describe("track", () => {
+  test("공통 필드를 붙여 보내고 user_id 는 보내지 않는다", async () => {
+    const { analytics, clock, server } = analyticsWith();
+    analytics.track("app_open", { display_mode: "standalone" });
+    analytics.track("discover_search", { query: "q".repeat(150) });
+    await clock.advance(FLUSH_DEBOUNCE_MS);
+    const [open, search] = server.received();
+    assert.equal(open.name, "app_open");
+    assert.equal(open.path, "/home");
+    assert.equal(open.display_mode, "standalone");
+    assert.equal(open.app_version, "abc1234");
+    assert.deepEqual([open.os, open.browser, open.in_app], ["android", "chrome", "kakaotalk"]);
+    assert.equal(open.client_at, "2026-10-22T00:00:00.000Z");
+    assert.equal(open.device_id, search.device_id, "기기 id 는 이어진다");
+    assert.equal(open.session_id, search.session_id);
+    assert.notEqual(open.client_event_id, search.client_event_id);
+    assert.equal(search.properties.query.length, 100);
+    assert.ok(!("user_id" in open));
+    assert.deepEqual(Object.keys(open).sort(), [
+      "app_version", "browser", "client_at", "client_event_id", "device_id", "display_mode", "in_app", "name", "os", "path", "properties", "session_id",
+    ]);
+  });
+
+  test("30분 넘게 쉬면 session_id 가 바뀌고 기기 id 는 그대로", async () => {
+    const { analytics, clock, server } = analyticsWith();
+    analytics.track("home_view");
+    await clock.advance(10 * 60_000);
+    analytics.track("item_view");
+    await clock.advance(SESSION_IDLE_MS + 1);
+    analytics.track("home_view");
+    await clock.advance(FLUSH_DEBOUNCE_MS);
+    const [a, b, c] = server.received();
+    assert.equal(a.session_id, b.session_id);
+    assert.notEqual(b.session_id, c.session_id);
+    assert.equal(a.device_id, c.device_id);
+  });
+});
+
+describe("예전 로컬 기록 이관", () => {
+  const legacy = [
+    { name: "home_view", at: "2026-10-01T01:00:00.000Z" },
+    { name: "discover_search", at: "2026-10-01T01:01:00.000Z", properties: { query: "가".repeat(130) } },
+    { name: "add_to_trove", at: "2026-10-01T01:02:00.000Z", properties: { item_id: "rel-1", surface: "home" } },
+    { broken: true },
+  ];
+
+  test("계정당 한 번만, migrated = true 를 붙여 올리고 예전 키를 지운다", async () => {
+    const { analytics, store, server } = analyticsWith();
+    store.setItem(LEGACY_KEY, JSON.stringify(legacy));
+    analytics.userChanged("user-1");
+    await settle();
+    const got = server.received();
+    assert.deepEqual(got.map((r) => r.name), ["home_view", "discover_search", "add_to_trove"]);
+    assert.ok(got.every((r) => r.properties.migrated === true));
+    assert.deepEqual(got.map((r) => r.client_at), legacy.slice(0, 3).map((e) => e.at));
+    assert.equal(got[1].properties.query.length, 100);
+    assert.equal(got[0].path, null);
+    assert.equal(store.getItem(LEGACY_KEY), null);
+    assert.ok(store.getItem(migrationFlagKey("user-1")));
+
+    // 같은 계정이면 다시 생겨도 올리지 않는다
+    store.setItem(LEGACY_KEY, JSON.stringify(legacy));
+    analytics.userChanged("user-1");
+    await settle();
+    assert.equal(server.received().length, 3);
+    assert.ok(store.getItem(LEGACY_KEY), "다른 계정 몫으로 남는다");
+
+    // 다른 계정이면 한 번
+    analytics.userChanged("user-2");
+    await settle();
+    assert.equal(server.received().length, 6);
+  });
+});
+
+describe("MVP 데이터 초기화", () => {
+  test("서버 삭제·로그아웃이 끝날 때까지 새 기록을 보내지 않고, 끝나면 새 세션으로 보낸다", async () => {
+    const { analytics, clock, store, server, calls, order } = analyticsWith();
+    analytics.track("home_view");
+    await clock.advance(FLUSH_DEBOUNCE_MS);
+    assert.equal(server.received("token-1").length, 1);
+    const deviceBefore = server.received("token-1")[0].device_id;
+
+    analytics.clear();
+    const reset = analytics.resetServerData();
+    analytics.track("app_open"); // 초기화 직후의 기록
+    await reset;
+    await clock.advance(FLUSH_DEBOUNCE_MS);
+    assert.equal(calls.delete, 1);
+    assert.equal(store.getItem(RESET_PENDING_KEY), null);
+    assert.equal(server.received("token-1").length, 1, "옛 계정에는 새 기록이 가지 않는다");
+    const fresh = server.received("token-2");
+    assert.deepEqual(fresh.map((r) => r.name), ["app_open"]);
+    assert.notEqual(fresh[0].device_id, deviceBefore, "초기화하면 기기 id 도 새로");
+    assert.deepEqual(order, ["post:token-1", "delete:token-1", "post:token-2"]);
+  });
+
+  test("삭제가 네트워크 문제로 실패하면 표식을 남기고, 다음 기회(resume)에 마저 지운 뒤 보낸다", async () => {
+    const { analytics, clock, store, server, calls } = analyticsWith({ deleteOutcomes: ["retry", "done"] });
+    analytics.clear();
+    await analytics.resetServerData();
+    analytics.track("home_view");
+    await clock.advance(FLUSH_DEBOUNCE_MS);
+    assert.ok(store.getItem(RESET_PENDING_KEY));
+    assert.equal(server.calls.length, 0, "삭제를 마치기 전에는 보내지 않는다");
+    await analytics.resume();
+    await settle();
+    assert.equal(calls.delete, 2);
+    assert.equal(store.getItem(RESET_PENDING_KEY), null);
+    assert.deepEqual(server.received("token-2").map((r) => r.name), ["home_view"]);
+  });
+
+  test("보내는 중인 묶음이 끝난 뒤에 삭제한다", async () => {
+    let release;
+    const server = fakeServer();
+    const order = [];
+    const { analytics, clock } = analyticsWith({
+      post: (rows, token, keepalive) => {
+        order.push("post-start");
+        return new Promise((resolve) => (release = () => resolve(server.post(rows, token, keepalive)))).then((result) => {
+          order.push("post-end");
+          return result;
+        });
+      },
+      deleteServerDataAndSignOut: async () => {
+        order.push("delete");
+        return "done";
+      },
+    });
+    analytics.track("home_view");
+    await clock.advance(FLUSH_DEBOUNCE_MS);
+    const reset = analytics.resetServerData();
+    await settle();
+    assert.deepEqual(order, ["post-start"]);
+    release();
+    await reset;
+    assert.deepEqual(order, ["post-start", "post-end", "delete"]);
+  });
+});
+
+describe("로컬 전용 모드(Supabase 환경 변수 없음)", () => {
+  test("네트워크·세션 함수를 하나도 부르지 않고, 예전처럼 이 기기에 최근 200개만 남긴다", async () => {
+    const { analytics, clock, store, calls } = analyticsWith({ serverMode: false });
+    for (let i = 0; i < 205; i += 1) analytics.track("home_view", { i });
+    analytics.track("discover_search", { query: "q".repeat(150) });
+    analytics.hidden();
+    analytics.userChanged("user-1");
+    await analytics.resume();
+    await analytics.resetServerData();
+    await clock.advance(10 * 60_000);
+    assert.deepEqual(calls, { getToken: 0, peekToken: 0, post: 0, ensureSession: 0, delete: 0 });
+    assert.equal(analytics.pipeline, null);
+    const log = JSON.parse(store.getItem(LEGACY_KEY));
+    assert.equal(log.length, 200);
+    assert.equal(log.at(-1).name, "discover_search");
+    assert.equal(log.at(-1).properties.query.length, 150, "로컬 기록은 예전 그대로(자르지 않음)");
+    assert.equal(log[0].properties.i, 6);
+    assert.equal(store.getItem(QUEUE_KEY), null);
+    assert.equal(store.getItem(DEVICE_KEY), null, "기기 id 도 만들지 않는다");
+    analytics.clear();
+    assert.equal(store.getItem(LEGACY_KEY), null);
+  });
+});

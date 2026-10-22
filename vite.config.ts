@@ -36,8 +36,14 @@ function liveReleases(): Plugin {
   };
 }
 
+/** 사용 기록의 app_version. Vercel 은 빌드할 때 VERCEL_GIT_COMMIT_SHA 를 넣어 준다 */
+const appVersion = (process.env.VERCEL_GIT_COMMIT_SHA ?? "").trim().slice(0, 7) || "dev";
+
 export default defineConfig({
   plugins: [react(), liveReleases()],
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+  },
   server: {
     host: "127.0.0.1",
     port: 4173,

@@ -7,7 +7,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { clearAnalytics } from "../lib/analytics";
+import { clearAnalytics, resetServerData } from "../lib/analytics";
 import type { AlertPreset, TroveState, TroveUser } from "../types";
 
 /** v3: 발행물 기반 id(관심사 category:/entity:, 출시 항목은 콘솔 id)로 바뀌어 v2 의 관심사·담기·알림은 이어받지 않는다 */
@@ -170,7 +170,10 @@ export function TroveProvider({ children }: PropsWithChildren) {
   );
 
   const resetDemo = useCallback(() => {
+    // "사용 기록도 함께 지운다": 이 기기의 기록과 보내지 못한 기록, 그리고 서버 모드면 Trove 서버의 내 기록까지
+    // (delete_my_data → 로그아웃 → 다음 기록 때 새 익명 세션). 로컬 전용 모드에서 resetServerData 는 아무것도 안 한다
     clearAnalytics();
+    resetServerData();
     window.localStorage.removeItem(STORAGE_KEY);
     for (const key of LEGACY_STORAGE_KEYS) window.localStorage.removeItem(key);
     setState(initialState);
