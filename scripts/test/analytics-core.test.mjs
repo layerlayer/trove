@@ -30,6 +30,7 @@ import {
   SESSION_IDLE_MS,
   summarizeBrowser,
   truncateChars,
+  UNCONFIRMED_KEY,
   uuidFromBytes,
   writeQueue,
 } from "../../src/lib/analytics-core.ts";
@@ -265,6 +266,22 @@ describe("세션이 없을 때 · 실패했을 때", () => {
     assert.equal(readQueue(store).length, 0);
   });
 
+  test("409 라도 23503(대시보드에서 지운 계정의 토큰)이면 버리지 않고 나중에 다시 보낸다", async () => {
+    const { clock, store, server, pipeline, setToken } = pipelineWith();
+    server.status = 409;
+    server.code = "23503";
+    writeQueue(store, [row("home_view"), row("item_view"), row("feed_more")]);
+    await pipeline.flush();
+    assert.equal(server.calls.length, 1, "나눠 보내지 않는다");
+    assert.equal(readQueue(store).length, 3, "버리지 않는다");
+    server.status = 201;
+    server.code = null;
+    setToken("token-2"); // 토큰이 끝나고 새 익명 계정
+    await clock.advance(5_000);
+    assert.deepEqual(server.received("token-2").map((r) => r.name), ["home_view", "item_view", "feed_more"]);
+    assert.equal(readQueue(store).length, 0);
+  });
+
   test("DB 제한에 걸리는 행(400·23514)만 버리고 나머지는 보낸다", async () => {
     const { store, server, pipeline } = pipelineWith();
     server.rejectNames.add("bad_event");
@@ -277,6 +294,8 @@ describe("세션이 없을 때 · 실패했을 때", () => {
   test("표가 없거나 스키마가 다르면(404, 400 PGRST…) 버리지 않고 기다린다", () => {
     assert.equal(classifyResponse(201), "ok");
     assert.equal(classifyResponse(409, "23505"), "duplicate");
+    assert.equal(classifyResponse(409), "duplicate", "코드 없는 409 도 중복");
+    assert.equal(classifyResponse(409, "23503"), "retry", "지운 계정의 토큰(외래 키)은 중복이 아니다");
     assert.equal(classifyResponse(400, "23514"), "reject");
     assert.equal(classifyResponse(400, "22001"), "reject");
     assert.equal(classifyResponse(413), "reject");
@@ -317,6 +336,51 @@ describe("화면이 숨겨지거나 닫힐 때", () => {
     assert.ok(sent < heavy.length, `${sent}개만`);
     const bytes = Buffer.byteLength(JSON.stringify(heavy.slice(0, sent)));
     assert.ok(bytes <= KEEPALIVE_MAX_BYTES, `${bytes} bytes`);
+  });
+
+  test("keepalive 응답 전에 페이지가 닫혀도, 다음 시작은 그 행을 새 기록과 섞지 않고 한 행씩 보내 409 가 번지지 않는다", async () => {
+    const store = createMemoryStore();
+    const server = fakeServer();
+    // 첫 페이지: keepalive 는 서버에 닿지만 응답을 받기 전에 페이지가 닫힌다(.then 이 돌지 않음)
+    const first = createEventPipeline({
+      store,
+      timers: fakeClock().timers,
+      getToken: async () => "token-1",
+      peekToken: () => "token-1",
+      post: (rows, token, keepalive) => {
+        void server.post(rows, token, keepalive);
+        return new Promise(() => {});
+      },
+      isHeld: () => false,
+    });
+    first.enqueue(row("tab_a"));
+    first.enqueue(row("tab_b"));
+    first.flushOnHide();
+    await settle();
+    assert.equal(server.received().length, 2);
+    assert.equal(readQueue(store).length, 2, "결과를 모르니 큐에 남는다");
+    assert.equal(JSON.parse(store.getItem(UNCONFIRMED_KEY)).length, 2);
+
+    // 다음 시작: 같은 저장소로 새 파이프라인
+    server.calls.length = 0;
+    const next = createEventPipeline({
+      store,
+      timers: fakeClock().timers,
+      getToken: async () => "token-1",
+      peekToken: () => "token-1",
+      post: (...args) => server.post(...args),
+      isHeld: () => false,
+    });
+    next.enqueue(row("app_open"));
+    next.flushOnHide(); // 이 keepalive 는 결과 모르는 행을 싣지 않아 통째로 409 가 되지 않는다
+    await settle();
+    assert.deepEqual(server.calls.map((call) => [call.count, call.keepalive]), [[1, true]]);
+    next.enqueue(row("home_view"));
+    await next.flush();
+    assert.deepEqual(server.calls.map((call) => [call.count, call.keepalive]), [[1, true], [1, false], [1, false], [1, false]]);
+    assert.deepEqual(server.received().map((r) => r.name), ["tab_a", "tab_b", "app_open", "home_view"], "두 번 들어가지 않는다");
+    assert.equal(readQueue(store).length, 0);
+    assert.equal(store.getItem(UNCONFIRMED_KEY), null);
   });
 
   test("keepalive 로 실어 보낸 행은 응답 전에 일반 flush 가 또 싣지 않는다", async () => {
@@ -566,6 +630,26 @@ describe("MVP 데이터 초기화", () => {
     assert.equal(calls.delete, 2);
     assert.equal(store.getItem(RESET_PENDING_KEY), null);
     assert.deepEqual(server.received("token-2").map((r) => r.name), ["home_view"]);
+  });
+
+  test("재시도 예약이 남은 채 resume 으로 초기화가 끝나도, 같은 페이지의 다음 초기화가 막히지 않는다", async () => {
+    const { analytics, clock, store, server, calls } = analyticsWith({ deleteOutcomes: ["retry", "done", "done"] });
+    analytics.clear();
+    await analytics.resetServerData(); // 네트워크 문제 → 30초 뒤 다시 예약
+    await analytics.resume(); // 온라인 복귀로 마저 지움
+    assert.equal(calls.delete, 2);
+    assert.equal(store.getItem(RESET_PENDING_KEY), null);
+    await clock.advance(30_000); // 남은 예약이 있었다면 여기서 표식 없이 돈다
+    assert.equal(calls.delete, 2);
+
+    analytics.clear();
+    await analytics.resetServerData();
+    assert.equal(calls.delete, 3, "두 번째 초기화도 서버 삭제를 부른다");
+    assert.equal(store.getItem(RESET_PENDING_KEY), null);
+    await settle();
+    analytics.track("home_view");
+    await clock.advance(FLUSH_DEBOUNCE_MS);
+    assert.equal(server.calls.length, 1, "초기화 뒤 기록이 묶이지 않고 나간다");
   });
 
   test("보내는 중인 묶음이 끝난 뒤에 삭제한다", async () => {

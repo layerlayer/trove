@@ -8,6 +8,11 @@
 
 /** 보내지 못한 기록을 쌓아 두는 localStorage 키(최대 QUEUE_MAX 개, 넘치면 오래된 것부터 버린다) */
 export const QUEUE_KEY = "trove-events-queue-v1";
+/**
+ * keepalive 로 보냈지만 페이지가 닫혀 결과를 모르는 행의 client_event_id. 대개 이미 들어갔으므로 다음 flush 는
+ * 이 행들을 새 기록과 한 묶음에 싣지 않고(섞으면 묶음 전체가 409 로 돌아와 반씩 나눠 다시 보내야 한다) 한 행씩 보낸다
+ */
+export const UNCONFIRMED_KEY = "trove-events-unconfirmed-v1";
 /** 예전 버전이 이 기기에 남긴 최근 200개 기록. 서버 모드에서 계정당 한 번 올리고 지운다 */
 export const LEGACY_KEY = "trove-analytics-v1";
 export const QUEUE_MAX = 500;
@@ -277,18 +282,46 @@ export function writeQueue(store: KeyValueStore, rows: ServerEventRow[]): void {
   }
 }
 
+function readUnconfirmed(store: KeyValueStore): Set<string> {
+  try {
+    const parsed = JSON.parse(store.getItem(UNCONFIRMED_KEY) ?? "[]") as unknown;
+    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeUnconfirmed(store: KeyValueStore, ids: Set<string>): void {
+  try {
+    if (ids.size === 0) store.removeItem(UNCONFIRMED_KEY);
+    else store.setItem(UNCONFIRMED_KEY, JSON.stringify(capQueue([...ids])));
+  } catch {
+    // 표시를 못 남기면 다음 flush 가 예전처럼 나눠 보낸다(잃는 것은 없다)
+  }
+}
+
+/** 표시에서 ids 를 뗀다(들어갔거나, 페이지가 살아 있어 결과를 알게 된 행) */
+function unmarkUnconfirmed(store: KeyValueStore, ids: string[]): void {
+  const marked = readUnconfirmed(store);
+  if (marked.size === 0) return;
+  const before = marked.size;
+  ids.forEach((id) => marked.delete(id));
+  if (marked.size !== before) writeUnconfirmed(store, marked);
+}
+
 // ---------------------------------------------------------------------------
 // 응답 해석
 
 /**
  * ok: 들어감. duplicate: 이미 있음(같은 client_event_id, 409/23505). reject: 이 행(들) 자체가 DB 제한에 걸림(22xxx·23xxx, 413).
  * retry: 그 밖의 모든 것(네트워크 0, 401 토큰 만료, 403, 404 표 없음, PGRST 스키마 캐시, 429, 5xx) — 잃지 않고 나중에 다시.
+ * 다른 코드의 409(예: 23503 — 대시보드에서 지운 계정의 토큰이 아직 살아 있음)도 retry: 토큰이 끝나면 새 익명 계정으로 들어간다.
  */
 export type SendOutcome = "ok" | "duplicate" | "reject" | "retry";
 
 export function classifyResponse(status: number, code?: string | null): SendOutcome {
   if (status >= 200 && status < 300) return "ok";
-  if (status === 409 || code === "23505") return "duplicate";
+  if (code === "23505" || (status === 409 && !code)) return "duplicate";
   if (status === 413) return "reject";
   if ((status === 400 || status === 422) && typeof code === "string" && /^(22|23)/.test(code)) return "reject";
   return "retry";
@@ -409,6 +442,7 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
     if (ids.length === 0) return;
     const drop = new Set(ids);
     writeQueue(store, readQueue(store).filter((row) => !drop.has(row.client_event_id)));
+    unmarkUnconfirmed(store, ids);
   }
 
   function sendable(): ServerEventRow[] {
@@ -449,7 +483,11 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
     let progressed = false;
     for (;;) {
       if (startEpoch !== epoch || deps.isHeld()) return progressed;
-      const batch = sendable().slice(0, BATCH_MAX);
+      const rows = sendable();
+      const unconfirmed = readUnconfirmed(store);
+      const fresh = unconfirmed.size === 0 ? rows : rows.filter((row) => !unconfirmed.has(row.client_event_id));
+      // 새 기록을 먼저 묶어 보내고, keepalive 결과를 모르는 행은 한 행씩(이미 있으면 409 하나로 끝난다)
+      const batch = fresh.length > 0 ? fresh.slice(0, BATCH_MAX) : rows.slice(0, 1);
       if (batch.length === 0) {
         failures = 0;
         return progressed;
@@ -509,7 +547,10 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
     if (!token) return;
     const batch: ServerEventRow[] = [];
     let bytes = 2;
+    const unconfirmed = readUnconfirmed(store);
     for (const row of sendable()) {
+      // 지난번 keepalive 의 결과를 모르는 행은 싣지 않는다. 이미 들어갔으면 이 요청 전체가 409 로 거절된다
+      if (unconfirmed.has(row.client_event_id)) continue;
       const size = byteLength(JSON.stringify(row)) + 1;
       if (batch.length >= BATCH_MAX || bytes + size > KEEPALIVE_MAX_BYTES) break;
       batch.push(row);
@@ -519,10 +560,14 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
     const ids = idsOf(batch);
     const startEpoch = epoch;
     ids.forEach((id) => inflight.add(id));
+    // 응답 전에 페이지가 닫히면 .then 이 돌지 않는다. 그때를 위해 "보냈지만 결과 모름" 표시를 먼저 남긴다
+    ids.forEach((id) => unconfirmed.add(id));
+    writeUnconfirmed(store, unconfirmed);
     void post(batch, token, true)
       .then((response) => {
         // 409·제한 위반은 여기서 나누지 않는다. 행이 저장 큐에 그대로 있으니 다음 flush 가 나눠 보낸다
         if (classifyResponse(response.status, response.code) === "ok" && startEpoch === epoch) removeFromQueue(ids);
+        else unmarkUnconfirmed(store, ids);
       })
       .finally(() => ids.forEach((id) => inflight.delete(id)));
   }
@@ -548,6 +593,7 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
       failures = 0;
       inflight.clear();
       writeQueue(store, []);
+      writeUnconfirmed(store, new Set());
     },
     idle() {
       return flushing ?? Promise.resolve();
@@ -725,14 +771,23 @@ export function createAnalytics(deps: AnalyticsDeps): Analytics {
     }
   }
 
+  function clearResetRetry() {
+    if (resetRetryTimer !== null) deps.timers.clear(resetRetryTimer);
+    resetRetryTimer = null;
+  }
+
   function runPendingReset(force = false): Promise<void> {
-    resetFlight ??= (async () => {
+    if (resetFlight) return resetFlight;
+    // 표식 확인은 비동기 함수 밖에서 한다. 안에서 await 없이 끝나면 finally 의 resetFlight = null 이
+    // 대입보다 먼저 돌아, 끝난 promise 가 resetFlight 에 남고 이후 초기화가 모두 막힌다
+    if (!force && !isResetPending()) return Promise.resolve();
+    resetFlight = (async () => {
       try {
-        if (!force && !isResetPending()) return;
         // 이미 나가는 중인 묶음이 옛 계정으로 도착한 뒤에 지우도록 기다린다
         await getPipeline().idle();
         const outcome = await deps.deleteServerDataAndSignOut().catch(() => "retry" as const);
         if (outcome === "done") {
+          clearResetRetry();
           store.removeItem(RESET_PENDING_KEY);
           // 초기화 뒤에 생긴 기록은 새 익명 세션으로 보낸다(세션은 여기서 필요해질 때 만든다)
           void getPipeline().flush();
@@ -786,6 +841,7 @@ export function createAnalytics(deps: AnalyticsDeps): Analytics {
         // 저장소가 막혀 있어도 초기화는 계속된다
       }
       if (!deps.serverMode) return;
+      clearResetRetry();
       try {
         getPipeline().clear();
         store.removeItem(DEVICE_KEY);

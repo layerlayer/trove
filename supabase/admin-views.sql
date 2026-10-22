@@ -91,7 +91,7 @@ where not p.is_internal
   and (u.is_anonymous is not true or ev.user_id is not null)
 order by ev.last_at desc nulls last;
 
-comment on view admin.testers is '테스터 한 명당 한 줄: 처음·마지막 방문, 방문한 날 수, 최근 7일 이벤트, 담기·팔로우·알림·푸시, 홈 화면 앱 여부. Seo 본인(is_internal) 제외.';
+comment on view admin.testers is '테스터 한 명당 한 줄: 처음·마지막 방문, 방문한 날 수, 최근 7일 이벤트, 담기·팔로우·알림·푸시, 홈 화면 앱 여부. Seo 본인(is_internal) 제외. 담기·팔로우·알림 수와 default_alerts 는 3단계(동기화)부터 채워져요. 그 전에는 0·기본값이니 funnel 이나 recent_events 의 add_to_trove·entity_followed·category_followed 로 보세요.';
 
 -- 날짜별(한국 날짜) 방문자·이벤트·새 담기·보낸 푸시·눌린 푸시
 drop view if exists admin.daily;
@@ -136,7 +136,7 @@ full join sv using (day_kst)
 full join pd using (day_kst)
 order by day_kst desc;
 
-comment on view admin.daily is '한국 날짜별 방문자 수, 이벤트 수, 새 담기, 보낸 푸시(테스트 제외), 눌린 푸시. Seo 본인 제외.';
+comment on view admin.daily is '한국 날짜별 방문자 수, 이벤트 수, 새 담기, 보낸 푸시(테스트 제외), 눌린 푸시. Seo 본인 제외. 새 담기는 3단계(동기화)부터, 푸시 열은 푸시를 붙인 뒤부터 채워져요.';
 
 -- 방문 → 관심사 고름 → 첫 담기 → 로그인 → 알림 허용 → 푸시 눌러 들어옴, 단계별 인원(각 단계에 닿은 사람 수)
 drop view if exists admin.funnel;
@@ -194,7 +194,7 @@ select
 from steps s
 order by s.step;
 
-comment on view admin.funnel is '방문 → 관심사 고름 → 첫 담기 → 로그인 → 알림 허용 → 푸시 눌러 들어옴. 각 단계에 닿은 방문자 수와 방문자 대비 %. Seo 본인 제외.';
+comment on view admin.funnel is '방문 → 관심사 고름 → 첫 담기 → 로그인 → 알림 허용 → 푸시 눌러 들어옴. 각 단계에 닿은 방문자 수와 방문자 대비 %. Seo 본인 제외. 3단계(동기화) 전에는 관심사 고름이 홈·아티스트 화면의 팔로우 기록으로만 잡혀(처음 관심사 고르는 화면은 기록이 없어요) 적게 나오고, 첫 담기보다 작을 수 있어요.';
 
 -- 최근 이벤트 500개(누가 했는지와 함께)
 drop view if exists admin.recent_events;

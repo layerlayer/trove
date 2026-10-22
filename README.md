@@ -92,7 +92,7 @@ npm run data:push:uninstall
 4. Project Settings → API Keys 의 **Publishable key**(`sb_publishable_…`)와 Project Settings → Data API 의 Project URL(`https://<ref>.supabase.co`)을 복사해 Vercel → Settings → Environment Variables 에 넣습니다. Environments 는 **Production 과 Preview** 둘 다 고릅니다.
    - `VITE_SUPABASE_URL` = Project URL
    - `VITE_SUPABASE_PUBLISHABLE_KEY` = Publishable key
-5. Vercel → Deployments → 맨 위 배포의 ⋯ → **Redeploy**. 환경 변수는 빌드 때 앱에 들어가므로 다시 배포해야 반영됩니다. 앱 버전(`app_version`)은 Vercel 이 주는 커밋 앞 7자리가 자동으로 붙습니다.
+5. 환경 변수는 빌드 때 앱에 들어가므로 새로 빌드해야 반영됩니다. 맨 위 배포가 아니라 **1단계 PR 의 미리보기**를 다시 빌드합니다: Vercel → Deployments 에서 Branch 가 `claude/server-events` 인 가장 최근 배포의 ⋯ → **Redeploy**(맨 위 줄은 매일 올라가는 `main` 발행 배포일 때가 많고, `main` 에는 아직 서버 코드가 없어 다시 빌드해도 바뀌지 않습니다). 미리보기에서 확인하고 `main` 에 합치면 Production 은 새 환경 변수로 자동 배포됩니다. 합친 뒤에 값을 바꿨다면 Production(Current) 배포를 Redeploy 합니다. 앱 버전(`app_version`)은 Vercel 이 주는 커밋 앞 7자리가 자동으로 붙습니다.
 6. Advisors → Security Advisor 에서 빨간(ERROR) 경고가 없는지 봅니다. 노란 경고 중 "익명 사용자에게도 적용되는 정책(anonymous access)" 과 "로그인 사용자가 security definer 함수(`delete_my_data`, `register_push_subscription`)를 실행할 수 있음" 은 의도한 것입니다.
 
 키 다루기:
@@ -108,16 +108,17 @@ npm run data:push:uninstall
   - `admin.testers` 테스터 한 명당 한 줄(처음·마지막 방문, 방문한 날 수, 최근 7일 이벤트, 담기·팔로우·알림 수, 홈 화면 앱 여부, 운영체제·브라우저, 앱 안 브라우저로 연 적 있는지). 기록이 하나도 없는 익명 계정(초기화 직후 등)은 뺍니다.
   - `admin.daily` 한국 날짜별 방문자·이벤트·새 담기 수(푸시 열은 푸시를 붙인 뒤부터 채워집니다)
   - `admin.funnel` 방문 → 관심사 고름 → 첫 담기 → 로그인 → 알림 허용 → 푸시 눌러 들어옴, 단계별 인원
+  - **1단계에서는 담기·팔로우·알림 열이 비어 있습니다.** `testers` 의 담기·팔로우·알림 수(0)와 기본 알림(`D-1, D-Day`), `daily` 의 새 담기 수(0)는 3단계(동기화)부터 채워집니다. 그 전에는 `funnel` 이나 `recent_events` 의 `add_to_trove`·`entity_followed`·`category_followed` 로 보세요. `funnel` 의 "관심사 고름" 도 그 전에는 홈·아티스트 화면의 팔로우만 잡혀(처음 관심사 고르는 화면은 기록이 없습니다) 적게 나오고, "첫 담기" 보다 작을 수 있습니다.
   - `admin.recent_events` 최근 이벤트 500개, `admin.push_log` 푸시 기록(푸시를 붙인 뒤부터)
 - **본인 기기 빼기**: 본인 기기에서 발견 탭에 남이 칠 리 없는 검색어(예: `seo-내기기`)를 한 번 넣고, 몇 초 뒤 SQL Editor 에서 실행합니다.
 
   ```sql
   update public.profiles set is_internal = true
-  where id in (select user_id from public.events
-               where name = 'discover_search' and properties->>'query' = 'seo-내기기');
+  where user_id in (select user_id from public.events
+                    where name = 'discover_search' and properties->>'query' = 'seo-내기기');
   ```
 
-  기기마다 한 번씩 하고, 그 기기에서 MVP 데이터 초기화를 하면 새 임시 계정이 생기므로 다시 합니다. `testers`·`daily`·`funnel` 에서 빠지고, `recent_events`·`push_log` 에는 `internal` 열로 표시됩니다.
+  임시 계정은 브라우저마다 따로 생깁니다. 같은 아이폰이라도 Safari, 홈 화면 앱, 카카오톡 안 브라우저는 각각 다른 계정이므로 **브라우저·홈 화면 앱마다 한 번씩** 하고, 거기서 MVP 데이터 초기화를 하면 새 임시 계정이 생기므로 다시 합니다. `testers`·`daily`·`funnel` 에서 빠지고, `recent_events`·`push_log` 에는 `internal` 열로 표시됩니다.
 - 무료 플랜은 자동 백업이 없습니다. 테스트 중에는 주 1회 `admin.testers` 와 `events` 를 CSV 로 받아 둡니다(Table Editor › Export, 또는 SQL Editor 결과의 Export).
 
 ### 서버 없이 돌 때 (로컬 전용)
@@ -128,7 +129,8 @@ npm run data:push:uninstall
 
 - `src/lib/supabase.ts` 클라이언트(필요할 때만 불러옴)와 익명 세션. 세션이 없을 때만, 여러 탭·새로고침에서도 한 번만 만들고, 화면을 막지 않으며, 실패하면 조금 뒤 다시 합니다.
 - `src/lib/analytics-core.ts` 묶음 전송(3초 모아서, 또는 화면이 숨겨지거나 닫힐 때 keepalive), 재시도 큐(localStorage `trove-events-queue-v1`, 최대 500개, 넘치면 오래된 것부터 버림), 공통 필드(기기 ID, 30분 쉬면 바뀌는 방문 ID, 경로, 홈 화면 앱 여부, 앱 버전, 브라우저 요약), 검색어 앞 100자만 보냄, 같은 기록이 두 번 들어가지 않게 `client_event_id`.
-- 프로필 → MVP 데이터 초기화: 서버의 `delete_my_data()` 로 내 기록을 지우고 로그아웃한 뒤, 다음 기록 때 새 임시 계정을 만듭니다. 인터넷이 안 되면 다음에 앱을 열 때 마저 지우고, 그동안 새 기록은 보내지 않고 모아 둡니다.
+- 프로필 → MVP 데이터 초기화: 서버의 `delete_my_data()` 로 지금 이 브라우저(또는 홈 화면 앱)의 임시 계정 기록을 지우고 로그아웃한 뒤, 다음 기록 때 새 임시 계정을 만듭니다. Safari·홈 화면 앱·카카오톡 안 브라우저의 기록은 각각에서 초기화해야 지워집니다. 인터넷이 안 되면 다음에 앱을 열 때 마저 지우고, 그동안 새 기록은 보내지 않고 모아 둡니다.
+- Supabase 로그에 가끔 보이는 `409`(duplicate key, `events_user_client_event_key`)는 정상입니다. 창을 닫을 때 keepalive 로 보낸 기록은 도착했는지 알 수 없어 다음에 한 번 더 보내고, 이미 있으면 서버가 409 로 거절합니다.
 
 ### 시험
 

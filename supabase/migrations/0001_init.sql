@@ -4,7 +4,8 @@
 --   Supabase 대시보드 › SQL Editor 에 이 파일 내용을 통째로 붙여 Run. 그다음 supabase/admin-views.sql 을 같은 방법으로.
 --   한 트랜잭션이라 중간에 실패하면 아무것도 바뀌지 않아요. 다시 실행해도 안전해요(있는 표·행은 그대로 두고
 --   함수·트리거·정책·권한만 이 파일 내용으로 다시 맞춰요). 단, 이미 만든 표의 열이나 제약을 바꾸지는 않아요 —
---   그건 다음 번호 파일(0002_…)로 해요.
+--   그건 다음 번호 파일(0002_…)로 해요. 권한도 이 파일 내용으로 되돌리므로, 0002 이후 파일이 권한을 바꿨다면
+--   이 파일만 다시 돌리지 말고 뒤 번호 파일들도 차례로 다시 돌려요.
 --
 -- 지키는 원칙
 --   * public 의 모든 표에 RLS 를 켜고, 클라이언트(anon·authenticated)에게는 필요한 권한만 직접 준다.
@@ -231,7 +232,10 @@ grant select, delete on table public.interests, public.saves to authenticated;
 grant insert (user_id, interest_id) on table public.interests to authenticated;
 grant update (interest_id) on table public.interests to authenticated;
 grant insert (user_id, release_id, alert_presets) on table public.saves to authenticated;
-grant update (alert_presets) on table public.saves to authenticated;
+-- release_id 도 주는 까닭: supabase-js 의 .upsert({ release_id, alert_presets }) (PR3 setAlertPresets) 를 PostgREST 는
+-- on conflict (user_id, release_id) do update set release_id = excluded.release_id, alert_presets = ... 로 만든다.
+-- SET 에 든 열마다 update 권한이 있어야 한다. user_id 는 주지 않으므로 행은 RLS 로 여전히 내 것에 묶인다
+grant update (release_id, alert_presets) on table public.saves to authenticated;
 
 -- events: 넣기만. user_id·received_at·id 는 줄 수 없다(user_id 는 기본값 auth.uid())
 grant insert (client_event_id, device_id, session_id, name, properties, path, display_mode, app_version, os, browser, in_app, client_at)

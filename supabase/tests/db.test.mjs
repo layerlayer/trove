@@ -15,6 +15,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const MIGRATION = join(here, "..", "migrations", "0001_init.sql");
 const ADMIN_VIEWS = join(here, "..", "admin-views.sql");
 const SHIM = join(here, "shim.sql");
+const README = join(here, "..", "..", "README.md");
 
 const A = "aaaaaaaa-0000-4000-8000-000000000001"; // 이메일 계정
 const B = "bbbbbbbb-0000-4000-8000-000000000002"; // 이메일 계정
@@ -242,6 +243,20 @@ if (found.skip) {
 
         test("내 담기를 남에게 넘길 수 없다(user_id 열은 고칠 수 없다)", async () => {
           await rejects(`${as(A)} update public.saves set user_id = '${B}' where release_id = 'rel-1';`, /permission denied for table saves/);
+        });
+
+        test("PostgREST upsert 모양(on conflict … do update set release_id, alert_presets)으로 담기·알림을 한 번에 저장한다", async () => {
+          // supabase-js .from('saves').upsert({ release_id, alert_presets }) → Prefer: resolution=merge-duplicates
+          const upsert = (release, presets) => `
+            insert into public.saves (release_id, alert_presets) values ('${release}', '${presets}')
+              on conflict (user_id, release_id) do update set release_id = excluded.release_id, alert_presets = excluded.alert_presets;`;
+          const result = await rows(`${as(A)}
+            ${upsert("rel-1", "{D-1}")}
+            ${upsert("rel-new", "{D-7}")}
+            reset role;
+            select release_id || ':' || coalesce(alert_presets::text, 'default') from public.saves where user_id = '${A}' order by 1;
+            select alert_presets::text from public.saves where user_id = '${B}' and release_id = 'rel-1';`);
+          assert.deepEqual(result, ["rel-1:{D-1}", "rel-2:{}", "rel-new:{D-7}", "{D-7}"]);
         });
 
         test("알림 시점은 허용 목록 안에서만", async () => {
@@ -509,6 +524,20 @@ if (found.skip) {
           assert.equal(result.length, 5);
           assert.equal(result[0], "app_open|seo@example.com|true");
           assert.equal(result.at(-1), "app_open|b@example.com|false");
+        });
+
+        test("README 의 '본인 기기 빼기' SQL 을 그대로 돌리면 그 계정만 is_internal 이 되고 testers 에서 빠진다", async () => {
+          const readme = await readFile(README, "utf8");
+          const snippet = readme.slice(readme.indexOf("본인 기기 빼기")).match(/```sql\n([\s\S]*?)```/)?.[1];
+          assert.ok(snippet, "README 에서 SQL 을 찾지 못했어요");
+          const result = await rows(`
+            insert into public.events (user_id, device_id, name, properties, client_at)
+              values ('${N}', 'dev-n', 'discover_search', '{"query":"seo-내기기"}', now());
+            ${snippet}
+            select is_internal from public.profiles where user_id = '${N}';
+            select count(*) from public.profiles where is_internal;
+            select count(*) from admin.testers where tester = '익명 · ${N.slice(0, 8)}';`);
+          assert.deepEqual(result, ["t", "2", "0"]);
         });
 
         test("push_log: 발송 기록과 결과", async () => {
