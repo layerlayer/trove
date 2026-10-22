@@ -84,7 +84,7 @@ function id() {
 
 function row(name = "home_view", extra = {}) {
   return createRow(name, extra.properties ?? {}, {
-    now: Date.parse("2026-10-22T00:00:00Z"),
+    now: extra.now ?? Date.parse("2026-10-22T00:00:00Z"),
     clientEventId: extra.clientEventId ?? id(),
     deviceId: "device-1",
     sessionId: "session-1",
@@ -143,6 +143,50 @@ function pipelineWith(overrides = {}) {
     setToken: (value) => (token = value),
     setHeld: (value) => (held = value),
   };
+}
+
+/**
+ * 한 브라우저의 탭들이 함께 쓰는 localStorage 흉내(Chromium 처럼). 탭(view)마다 캐시를 따로 두고, 다른 탭의 쓰기는
+ * deliver() 를 불러야 보인다. 브라우저 쪽 값은 도착한 순서대로 마지막 쓰기가 이기고, 아직 보내지 않은 자기 쓰기가 있는
+ * 키에는 다른 탭의 앞선 쓰기를 덮어씌우지 않는다. 그래서 시간에 기대지 않고 "옛 캐시로 덮어쓰기"를 그대로 만든다.
+ */
+function sharedStorage() {
+  const backend = new Map();
+  const views = [];
+  let pending = [];
+  function view() {
+    const cache = new Map(backend);
+    const self = {
+      cache,
+      getItem: (key) => cache.get(key) ?? null,
+      setItem(key, value) {
+        cache.set(key, String(value));
+        pending.push({ from: self, key, value: String(value) });
+      },
+      removeItem(key) {
+        cache.delete(key);
+        pending.push({ from: self, key, value: null });
+      },
+    };
+    views.push(self);
+    return self;
+  }
+  function deliver() {
+    const batch = pending;
+    pending = [];
+    batch.forEach(({ from, key, value }, index) => {
+      if (value === null) backend.delete(key);
+      else backend.set(key, value);
+      for (const other of views) {
+        if (other === from || batch.slice(index + 1).some((later) => later.from === other && later.key === key)) continue;
+        if (value === null) other.cache.delete(key);
+        else other.cache.set(key, value);
+      }
+    });
+  }
+  /** 브라우저 쪽에 실제로 남은 큐(새 탭이 보는 값) */
+  const stored = () => readQueue({ getItem: (key) => backend.get(key) ?? null, setItem() {}, removeItem() {} });
+  return { view, deliver, stored };
 }
 
 // ---------------------------------------------------------------------------
@@ -381,6 +425,106 @@ describe("화면이 숨겨지거나 닫힐 때", () => {
     assert.deepEqual(server.received().map((r) => r.name), ["tab_a", "tab_b", "app_open", "home_view"], "두 번 들어가지 않는다");
     assert.equal(readQueue(store).length, 0);
     assert.equal(store.getItem(UNCONFIRMED_KEY), null);
+  });
+
+  test("두 탭이 같은 순간 숨겨지며(서버 500) 옛 캐시로 서로의 큐를 덮어써도, 서버가 돌아오면 두 탭 기록이 모두 한 번씩 도착한다", async () => {
+    const storage = sharedStorage();
+    const server = fakeServer();
+    server.status = 500;
+    const tab = () =>
+      createEventPipeline({
+        store: storage.view(),
+        timers: fakeClock().timers,
+        getToken: async () => "token-1",
+        peekToken: () => "token-1",
+        post: (...args) => server.post(...args),
+        isHeld: () => false,
+      });
+    const a = tab();
+    const b = tab();
+    a.enqueue(row("tab_a_1"));
+    a.enqueue(row("tab_a_2"));
+    b.enqueue(row("tab_b_1"));
+    a.flushOnHide(); // 두 탭 모두 서로의 쓰기를 아직 못 본 채 큐를 쓴다
+    b.flushOnHide();
+    await settle();
+    storage.deliver();
+    assert.deepEqual(storage.stored().map((r) => r.name), ["tab_b_1"], "나중에 도착한 쓰기가 앞 탭의 행을 덮었다");
+
+    server.status = 201;
+    await a.flush();
+    storage.deliver();
+    await b.flush();
+    storage.deliver();
+    assert.deepEqual(server.received().map((r) => r.name).sort(), ["tab_a_1", "tab_a_2", "tab_b_1"], "덮어써진 탭이 제 몫을 되살려 보낸다");
+    assert.deepEqual(storage.stored(), []);
+    assert.equal(a.pendingCount() + b.pendingCount(), 0);
+  });
+
+  test("새 브라우저에서 두 탭이 함께 시작해 한 탭이 옛 캐시로 큐를 지워도, 다른 탭의 첫 기록을 잃지 않는다", async () => {
+    const storage = sharedStorage();
+    const server = fakeServer();
+    let chain = Promise.resolve();
+    // navigator.locks 처럼 한 번에 한 탭. 잠금을 넘겨받을 즈음엔 앞 탭의 쓰기가 전해져 있다
+    const withLock = (task) => {
+      const run = chain.then(() => {
+        storage.deliver();
+        return task();
+      });
+      chain = run.catch(() => {});
+      return run;
+    };
+    const tab = () =>
+      createEventPipeline({
+        store: storage.view(),
+        timers: fakeClock().timers,
+        getToken: async () => "token-1",
+        peekToken: () => "token-1",
+        post: (...args) => server.post(...args),
+        isHeld: () => false,
+        withLock,
+      });
+    const a = tab();
+    const b = tab();
+    a.enqueue(row("app_open_a"));
+    a.enqueue(row("home_view_a"));
+    b.enqueue(row("app_open_b"));
+    b.enqueue(row("home_view_b"));
+    await Promise.all([a.flush(), b.flush()]);
+    storage.deliver();
+    assert.deepEqual(server.received().map((r) => r.name).sort(), ["app_open_a", "app_open_b", "home_view_a", "home_view_b"]);
+    assert.deepEqual(storage.stored(), []);
+  });
+
+  test("다른 탭에서 초기화하면, 이 탭이 들고 있던 초기화 전 기록은 큐에 되살리지도 보내지도 않는다", async () => {
+    const storage = sharedStorage();
+    const server = fakeServer();
+    server.status = 500;
+    let now = Date.parse("2026-10-22T00:00:00Z");
+    const tab = () =>
+      createEventPipeline({
+        store: storage.view(),
+        timers: fakeClock().timers,
+        getToken: async () => "token-1",
+        peekToken: () => "token-1",
+        post: (...args) => server.post(...args),
+        isHeld: () => false,
+        now: () => now,
+      });
+    const a = tab();
+    const b = tab();
+    a.enqueue(row("before_reset", { now }));
+    await a.flush(); // 500: 큐에 남고 a 가 들고 있다
+    storage.deliver();
+    now += 1_000;
+    b.clear(); // 다른 탭에서 MVP 데이터 초기화
+    storage.deliver();
+    server.status = 201;
+    a.enqueue(row("after_reset", { now }));
+    await a.flush();
+    storage.deliver();
+    assert.deepEqual(server.received().map((r) => r.name), ["after_reset"]);
+    assert.deepEqual(storage.stored(), []);
   });
 
   test("keepalive 로 실어 보낸 행은 응답 전에 일반 flush 가 또 싣지 않는다", async () => {

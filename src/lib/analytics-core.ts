@@ -6,8 +6,15 @@
  * 이 .ts 파일을 그대로 불러와 시험하기 때문이다(enum·namespace 같은 지울 수 없는 문법도 쓰지 않는다).
  */
 
-/** 보내지 못한 기록을 쌓아 두는 localStorage 키(최대 QUEUE_MAX 개, 넘치면 오래된 것부터 버린다) */
+/**
+ * 보내지 못한 기록을 쌓아 두는 localStorage 키(최대 QUEUE_MAX 개, 넘치면 오래된 것부터 버린다). 같은 브라우저의 모든 탭이
+ * 함께 쓴다. 탭마다 localStorage 를 따로 캐시해 다른 탭의 쓰기가 조금 늦게 보이므로, 한 탭이 옛 값을 바탕으로 쓰면 다른 탭이
+ * 방금 넣은 행이 지워질 수 있다. 그래서 각 탭은 자기가 넣은 행을 서버가 받았다고 확인할 때까지 메모리에도 들고 있다가,
+ * 이 키를 쓸 때마다 빠진 것을 되살리고 직접 보낸다(다른 탭이 이미 보냈으면 409 중복으로 끝난다)
+ */
 export const QUEUE_KEY = "trove-events-queue-v1";
+/** 마지막 MVP 데이터 초기화 시각(ISO). 다른 탭이 그 전에 만든 기록은 큐에 되살리지도 보내지도 않는다 */
+export const CLEARED_KEY = "trove-events-cleared-at";
 /**
  * keepalive 로 보냈지만 페이지가 닫혀 결과를 모르는 행의 client_event_id. 대개 이미 들어갔으므로 다음 flush 는
  * 이 행들을 새 기록과 한 묶음에 싣지 않고(섞으면 묶음 전체가 409 로 돌아와 반씩 나눠 다시 보내야 한다) 한 행씩 보낸다
@@ -351,8 +358,13 @@ export interface PipelineDeps {
   post(rows: ServerEventRow[], token: string, keepalive: boolean): Promise<PostResult>;
   /** MVP 데이터 초기화가 서버에서 끝나기 전에는 보내지 않는다(옛 계정으로 새 기록이 가지 않게) */
   isHeld(): boolean;
-  /** 여러 탭이 같은 큐를 동시에 보내지 않게. 없으면 그냥 실행 */
+  /**
+   * 여러 탭이 동시에 큐를 쓰고 보내지 않게(같은 행을 두 탭이 보내는 일을 줄인다). 없으면 그냥 실행.
+   * 탭마다 저장소 캐시가 늦을 수 있어 잠금만으로는 덮어쓰기를 다 막지 못한다. 행을 잃지 않는 것은 각 탭이 제 몫을 들고 있어서다
+   */
   withLock?: <T>(task: () => Promise<T>) => Promise<T>;
+  /** 초기화 시각을 남길 때 쓰는 시계(기본 Date.now) */
+  now?(): number;
 }
 
 export interface EventPipeline {
@@ -385,6 +397,11 @@ function idsOf(rows: ServerEventRow[]): string[] {
 export function createEventPipeline(deps: PipelineDeps): EventPipeline {
   const { store, timers } = deps;
   let memory: ServerEventRow[] = [];
+  /**
+   * 이 탭이 저장 큐에 넣었지만 서버가 받았다고(2xx·중복) 아직 확인하지 않은 행(고칠 수 없어 버린 행도 뺀다).
+   * 다른 탭이 옛 캐시로 저장 큐를 덮어써 지워도 다음 쓰기 때 되살리고 보낸다. 넣은 순서대로, 최대 QUEUE_MAX 개
+   */
+  let own = new Map<string, ServerEventRow>();
   let debounceTimer: unknown = null;
   let maxWaitTimer: unknown = null;
   let retryTimer: unknown = null;
@@ -430,23 +447,76 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
     }, delay);
   }
 
-  /** 메모리 큐를 저장 큐 뒤에 붙인다. 보내는 도중 페이지가 닫혀도 다음 시작 때 남아 있게 */
-  function persistMemory() {
-    if (memory.length === 0) return;
-    const rows = memory;
-    memory = [];
-    writeQueue(store, [...readQueue(store), ...rows]);
+  function clearedAt(): number {
+    try {
+      const at = Date.parse(store.getItem(CLEARED_KEY) ?? "");
+      return Number.isFinite(at) ? at : 0;
+    } catch {
+      return 0;
+    }
   }
 
+  function keepOwn(rows: ServerEventRow[], front = false) {
+    if (front) own = new Map([...rows.map((row): [string, ServerEventRow] => [row.client_event_id, row]), ...own]);
+    else rows.forEach((row) => own.set(row.client_event_id, row));
+    for (const id of own.keys()) {
+      if (own.size <= QUEUE_MAX) break;
+      own.delete(id);
+    }
+  }
+
+  /**
+   * 지금 보이는 저장 큐 + 거기서 빠진 이 탭 몫. 같은 id 는 하나만, drop 과 다른 탭에서 초기화하기 전에 만든 행은 뺀다.
+   * changed: 저장된 값과 달라 다시 써야 하는지
+   */
+  function queued(drop?: Set<string>): { rows: ServerEventRow[]; changed: boolean } {
+    const cutoff = clearedAt();
+    const beforeReset = (row: ServerEventRow) => cutoff > 0 && !(Date.parse(row.client_at) >= cutoff);
+    for (const [id, row] of own) if (beforeReset(row)) own.delete(id);
+    const rows: ServerEventRow[] = [];
+    const seen = new Set<string>();
+    let changed = false;
+    for (const row of readQueue(store)) {
+      if (seen.has(row.client_event_id) || drop?.has(row.client_event_id) || beforeReset(row)) {
+        changed = true;
+        continue;
+      }
+      seen.add(row.client_event_id);
+      rows.push(row);
+    }
+    for (const row of own.values()) {
+      if (seen.has(row.client_event_id) || drop?.has(row.client_event_id)) continue;
+      changed = true;
+      rows.push(row);
+    }
+    return { rows, changed };
+  }
+
+  /** 저장 큐를 읽은 그대로 다시 쓰되 drop 은 빼고 빠진 이 탭 몫은 되살린다. 다른 탭 행은 지우지 않는다. 바뀐 게 없으면 쓰지 않는다 */
+  function syncQueue(drop?: Set<string>) {
+    const { rows, changed } = queued(drop);
+    if (changed) writeQueue(store, rows);
+  }
+
+  /** 메모리 큐를 저장 큐 뒤에 붙인다. 보내는 도중 페이지가 닫혀도 다음 시작 때 남아 있게. 행은 확인될 때까지 own 에도 남는다 */
+  function persistMemory() {
+    if (memory.length > 0) {
+      keepOwn(memory);
+      memory = [];
+    }
+    syncQueue();
+  }
+
+  /** 서버가 받았거나(중복 포함) 고칠 수 없어 버린 행을 큐와 own 에서 뺀다 */
   function removeFromQueue(ids: string[]) {
     if (ids.length === 0) return;
-    const drop = new Set(ids);
-    writeQueue(store, readQueue(store).filter((row) => !drop.has(row.client_event_id)));
+    ids.forEach((id) => own.delete(id));
+    syncQueue(new Set(ids));
     unmarkUnconfirmed(store, ids);
   }
 
   function sendable(): ServerEventRow[] {
-    return readQueue(store).filter((row) => !inflight.has(row.client_event_id));
+    return queued().rows.filter((row) => !inflight.has(row.client_event_id));
   }
 
   async function post(rows: ServerEventRow[], token: string, keepalive: boolean): Promise<PostResult> {
@@ -506,17 +576,24 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
 
   async function flushOnce(): Promise<boolean> {
     clearScheduled();
-    persistMemory();
-    if (deps.isHeld() || sendable().length === 0) return false;
+    if (deps.isHeld() || (memory.length === 0 && sendable().length === 0)) {
+      persistMemory();
+      return false;
+    }
     const startEpoch = epoch;
     const token = await deps.getToken().catch(() => null);
     if (startEpoch !== epoch) return false;
     if (!token) {
       // 세션이 아직 없다(만드는 중이거나 실패). 기록은 저장 큐에서 기다리고, 조금 뒤 다시 본다
+      persistMemory();
       scheduleRetry();
       return false;
     }
-    const run = () => sendAll(token, startEpoch);
+    // 저장 큐 쓰기도 잠금 안에서: 다른 탭이 보내고 지우는 사이에 끼어드는 일을 줄인다
+    const run = () => {
+      persistMemory();
+      return sendAll(token, startEpoch);
+    };
     return deps.withLock ? deps.withLock(run) : run();
   }
 
@@ -580,13 +657,17 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
     },
     prepend(rows) {
       if (rows.length === 0) return;
-      writeQueue(store, [...rows, ...readQueue(store)]);
+      keepOwn(rows, true);
+      const current = queued().rows;
+      const front = new Set(idsOf(rows));
+      writeQueue(store, [...current.filter((row) => front.has(row.client_event_id)), ...current.filter((row) => !front.has(row.client_event_id))]);
     },
     flush,
     flushOnHide,
     clear() {
       epoch += 1;
       memory = [];
+      own = new Map();
       clearScheduled();
       clearTimer(retryTimer);
       retryTimer = null;
@@ -594,12 +675,18 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
       inflight.clear();
       writeQueue(store, []);
       writeUnconfirmed(store, new Set());
+      try {
+        // 다른 탭이 들고 있던 초기화 전 기록이 큐에 되살아나 새 계정으로 가지 않게
+        store.setItem(CLEARED_KEY, new Date((deps.now ?? Date.now)()).toISOString());
+      } catch {
+        // 표시를 못 남겨도 초기화는 계속된다
+      }
     },
     idle() {
       return flushing ?? Promise.resolve();
     },
     pendingCount() {
-      return memory.length + readQueue(store).length;
+      return memory.length + queued().rows.length;
     },
   };
 }
@@ -742,6 +829,7 @@ export function createAnalytics(deps: AnalyticsDeps): Analytics {
       post: deps.post,
       isHeld: isResetPending,
       withLock: deps.withLock,
+      now: deps.now,
     });
     return pipeline;
   }

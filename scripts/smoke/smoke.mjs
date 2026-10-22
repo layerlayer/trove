@@ -5,7 +5,8 @@
  *  (a) 환경 변수 없이 빌드 → 앱이 뜨고 홈이 그려지며, 같은 사이트 말고는 아무 데도 요청하지 않는다(Supabase 코드도 안 읽음)
  *  (b) VITE_SUPABASE_URL 을 가짜 Supabase(scripts/smoke/mock-supabase.mjs)로 두고 빌드 →
  *      새로고침·여러 탭에서도 익명 가입은 한 번, 기록은 공통 필드와 함께 묶음으로 도착, 예전 로컬 기록은 한 번만 이관,
- *      500 이면 재시도 큐에 남았다가 나중에 도착, 탭을 닫을 때 keepalive 로 도착, 초기화하면 delete_my_data 를 부르고 새 익명 계정
+ *      500 이면 재시도 큐에 남았다가 나중에 도착, 탭을 닫을 때 keepalive 로 도착, 초기화하면 delete_my_data 를 부르고 새 익명 계정,
+ *      두 탭이 서버 500 중에 같은 순간 숨겨져 같은 재시도 큐를 함께 써도 기록을 잃지 않음
  *  (c) 같은 설정의 개발 서버(React StrictMode 로 effect 가 두 번 도는 상태)에서도 익명 가입은 한 번
  *
  * Playwright 가 필요해요(이 저장소의 의존성은 아니에요). `npm i -g playwright && npx playwright install chromium` 처럼
@@ -338,13 +339,30 @@ async function serverMode(chromium, work, mock) {
     const twin = await newContext(browser);
     const twinUrls = watchRequests(twin);
     const signupsBefore = mock.state.signups.length;
-    await Promise.all([openHome(twin, site.url), openHome(twin, site.url)]);
+    const twinTabs = (await Promise.all([openHome(twin, site.url), openHome(twin, site.url)])).map((tab) => tab.page);
     await waitFor(() => mock.state.signups.length > signupsBefore, { message: "가입" });
     await new Promise((r) => setTimeout(r, 4_000));
     assert.equal(mock.state.signups.length, signupsBefore + 1);
     const twinUser = mock.state.signups.at(-1).id;
     await waitFor(() => eventsOf(mock, twinUser).filter((e) => e.name === "app_open").length === 2, { message: "두 탭의 app_open" });
     pass("새 브라우저에서 두 탭을 동시에 열어도 익명 가입은 1번(두 탭 기록이 같은 계정으로)");
+
+    // --- 두 탭이 같은 순간 숨겨지며(서버 500) 같은 재시도 큐를 함께 써도, 서버가 돌아오면 두 탭 기록이 모두 한 번씩 도착
+    mock.state.failEvents = true;
+    const rounds = 12;
+    for (let i = 0; i < rounds; i += 1) {
+      await Promise.all(twinTabs.map((tab) => tab.click(`.category-strip [role=tab] >> nth=${1 + (i % 3)}`)));
+      await Promise.all(twinTabs.map((tab) => tab.evaluate(() => window.dispatchEvent(new Event("pagehide")))));
+      await new Promise((r) => setTimeout(r, 150));
+    }
+    mock.state.failEvents = false;
+    await Promise.all(twinTabs.map((tab) => tab.evaluate(() => window.dispatchEvent(new Event("online")))));
+    const selected = () => eventsOf(mock, twinUser).filter((e) => e.name === "category_selected");
+    await waitFor(() => selected().length >= rounds * 2, { timeout: 30_000, message: `두 탭의 category_selected ${rounds * 2}개(지금 ${selected().length}개)` });
+    await waitFor(async () => (await twinTabs[0].evaluate((k) => localStorage.getItem(k), QUEUE_KEY)) === null, { message: "두 탭 큐 비우기" });
+    assert.equal(selected().length, rounds * 2);
+    assert.equal(new Set(selected().map((e) => e.client_event_id)).size, rounds * 2);
+    pass(`두 탭이 서버 500 중에 동시에 숨겨져도 기록을 잃지 않는다(${rounds * 2}개 모두 한 번씩 도착)`);
 
     const foreign = [...urls, ...twinUrls].filter((u) => !u.startsWith("data:") && !allowed.has(new URL(u).origin));
     assert.deepEqual(foreign, []);
