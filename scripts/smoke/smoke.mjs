@@ -6,7 +6,7 @@
  *  (b) VITE_SUPABASE_URL 을 가짜 Supabase(scripts/smoke/mock-supabase.mjs)로 두고 빌드 →
  *      새로고침·여러 탭에서도 익명 가입은 한 번, 기록은 공통 필드와 함께 묶음으로 도착, 예전 로컬 기록은 한 번만 이관,
  *      500 이면 재시도 큐에 남았다가 나중에 도착, 탭을 닫을 때 keepalive 로 도착, 초기화하면 delete_my_data 를 부르고 새 익명 계정,
- *      두 탭이 서버 500 중에 같은 순간 숨겨져 같은 재시도 큐를 함께 써도 기록을 잃지 않음
+ *      두 탭이 서버 500 중에 같은 순간 숨겨져 같은 재시도 큐를 함께 써도 기록을 잃지 않고, 다른 탭이 보낸 기록을 다시 보내지 않음
  *  (c) 같은 설정의 개발 서버(React StrictMode 로 effect 가 두 번 도는 상태)에서도 익명 가입은 한 번
  *
  * Playwright 가 필요해요(이 저장소의 의존성은 아니에요). `npm i -g playwright && npx playwright install chromium` 처럼
@@ -356,6 +356,7 @@ async function serverMode(chromium, work, mock) {
       await new Promise((r) => setTimeout(r, 150));
     }
     mock.state.failEvents = false;
+    const requestsBefore = mock.state.eventRequests.length;
     await Promise.all(twinTabs.map((tab) => tab.evaluate(() => window.dispatchEvent(new Event("online")))));
     const selected = () => eventsOf(mock, twinUser).filter((e) => e.name === "category_selected");
     await waitFor(() => selected().length >= rounds * 2, { timeout: 30_000, message: `두 탭의 category_selected ${rounds * 2}개(지금 ${selected().length}개)` });
@@ -363,6 +364,13 @@ async function serverMode(chromium, work, mock) {
     assert.equal(selected().length, rounds * 2);
     assert.equal(new Set(selected().map((e) => e.client_event_id)).size, rounds * 2);
     pass(`두 탭이 서버 500 중에 동시에 숨겨져도 기록을 잃지 않는다(${rounds * 2}개 모두 한 번씩 도착)`);
+    // 한 탭이 두 탭 몫을 보내면, 다른 탭은 그 행을 다시 보내지 않는다(예전에는 409 → 반씩 나눠 2N-1 번, 409 가 20번 넘게)
+    await new Promise((r) => setTimeout(r, 3_000));
+    const afterOnline = mock.state.eventRequests.slice(requestsBefore).filter((r) => r.userId === twinUser);
+    const duplicates = afterOnline.filter((r) => r.status === 409);
+    const shape = JSON.stringify(afterOnline.map((r) => [r.status, r.count]));
+    assert.ok(duplicates.length <= 2, `이미 들어간 기록을 다시 보낸 요청 ${duplicates.length}번: ${shape}`);
+    pass(`그때 다른 탭이 이미 보낸 기록은 다시 보내지 않는다(온라인 복귀 뒤 요청 ${afterOnline.length}번, 409 ${duplicates.length}번)`);
 
     const foreign = [...urls, ...twinUrls].filter((u) => !u.startsWith("data:") && !allowed.has(new URL(u).origin));
     assert.deepEqual(foreign, []);

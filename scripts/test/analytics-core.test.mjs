@@ -27,8 +27,10 @@ import {
   RESET_PENDING_KEY,
   resolveServerConfig,
   sanitizeProperties,
+  SENT_KEY,
   SESSION_IDLE_MS,
   summarizeBrowser,
+  tokenSubject,
   truncateChars,
   UNCONFIRMED_KEY,
   uuidFromBytes,
@@ -93,6 +95,22 @@ function row(name = "home_view", extra = {}) {
     appVersion: "abc1234",
     client: { os: "ios", browser: "safari", in_app: null },
   });
+}
+
+/** 서명 없는 가짜 JWT(sub 만 읽는다) */
+function jwt(sub) {
+  const part = (value) => Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${part({ alg: "HS256", typ: "JWT" })}.${part({ sub, role: "authenticated" })}.sig`;
+}
+
+/** navigator.locks 처럼 한 번에 하나씩(여러 탭이 함께 쓰는 잠금) */
+function serialLock() {
+  let chain = Promise.resolve();
+  return (task) => {
+    const run = chain.then(task);
+    chain = run.catch(() => {});
+    return run;
+  };
 }
 
 /** 가짜 Supabase events 표: 토큰별(=계정별)로 모으고, 같은 client_event_id 는 409 */
@@ -382,7 +400,7 @@ describe("화면이 숨겨지거나 닫힐 때", () => {
     assert.ok(bytes <= KEEPALIVE_MAX_BYTES, `${bytes} bytes`);
   });
 
-  test("keepalive 응답 전에 페이지가 닫혀도, 다음 시작은 그 행을 새 기록과 섞지 않고 한 행씩 보내 409 가 번지지 않는다", async () => {
+  test("keepalive 응답 전에 페이지가 닫혀도, 다음 시작은 그 행을 새 기록과 섞지 않고 따로 보내 409 가 번지지 않는다", async () => {
     const store = createMemoryStore();
     const server = fakeServer();
     // 첫 페이지: keepalive 는 서버에 닿지만 응답을 받기 전에 페이지가 닫힌다(.then 이 돌지 않음)
@@ -421,7 +439,8 @@ describe("화면이 숨겨지거나 닫힐 때", () => {
     assert.deepEqual(server.calls.map((call) => [call.count, call.keepalive]), [[1, true]]);
     next.enqueue(row("home_view"));
     await next.flush();
-    assert.deepEqual(server.calls.map((call) => [call.count, call.keepalive]), [[1, true], [1, false], [1, false], [1, false]]);
+    // 새 기록 1개 → 결과 모르는 2개 묶음(409) → 한 행씩(각각 409)
+    assert.deepEqual(server.calls.map((call) => [call.count, call.keepalive]), [[1, true], [1, false], [2, false], [1, false], [1, false]]);
     assert.deepEqual(server.received().map((r) => r.name), ["tab_a", "tab_b", "app_open", "home_view"], "두 번 들어가지 않는다");
     assert.equal(readQueue(store).length, 0);
     assert.equal(store.getItem(UNCONFIRMED_KEY), null);
@@ -452,11 +471,13 @@ describe("화면이 숨겨지거나 닫힐 때", () => {
     assert.deepEqual(storage.stored().map((r) => r.name), ["tab_b_1"], "나중에 도착한 쓰기가 앞 탭의 행을 덮었다");
 
     server.status = 201;
+    server.calls.length = 0;
     await a.flush();
     storage.deliver();
     await b.flush();
     storage.deliver();
     assert.deepEqual(server.received().map((r) => r.name).sort(), ["tab_a_1", "tab_a_2", "tab_b_1"], "덮어써진 탭이 제 몫을 되살려 보낸다");
+    assert.deepEqual(server.calls.map((call) => call.count), [1, 2], "되살린 두 행은 따로 한 묶음, b 는 a 가 보낸 제 행을 다시 보내지 않는다");
     assert.deepEqual(storage.stored(), []);
     assert.equal(a.pendingCount() + b.pendingCount(), 0);
   });
@@ -542,6 +563,116 @@ describe("화면이 숨겨지거나 닫힐 때", () => {
     await settle();
     assert.equal(server.received().length, 1);
     assert.equal(readQueue(store).length, 0);
+  });
+});
+
+describe("여러 탭: 다른 탭이 이미 보낸 행", () => {
+  function tabOn(store, server, extra = {}) {
+    return createEventPipeline({
+      store,
+      timers: fakeClock().timers,
+      getToken: async () => "token-1",
+      peekToken: () => "token-1",
+      post: (...args) => server.post(...args),
+      isHeld: () => false,
+      ...extra,
+    });
+  }
+
+  test("오프라인에서 두 탭이 쌓은 기록을 온라인 복귀 때 함께 보내도, 다른 탭이 보낸 행을 다시 보내지 않는다(요청 2번)", async () => {
+    const store = createMemoryStore();
+    const server = fakeServer();
+    server.status = 0; // 오프라인
+    const withLock = serialLock();
+    const a = tabOn(store, server, { withLock });
+    const b = tabOn(store, server, { withLock });
+    for (let i = 0; i < 100; i += 1) b.enqueue(row(`tab_b_${i}`)); // 100개째에 바로 보내려다 실패
+    await settle();
+    await b.idle();
+    for (let i = 0; i < 5; i += 1) a.enqueue(row(`tab_a_${i}`));
+    await a.flush();
+    assert.equal(readQueue(store).length, 105);
+
+    server.status = 201;
+    server.calls.length = 0;
+    await Promise.all([a.flush(), b.flush()]); // 두 탭 모두 online 이벤트
+    await settle();
+    assert.deepEqual(server.calls.map((call) => call.count), [100, 5], "먼저 잠금을 쥔 탭이 두 탭 몫을 다 보내고, 다른 탭은 하나도 다시 보내지 않는다");
+    assert.equal(new Set(server.received().map((r) => r.client_event_id)).size, 105);
+    assert.equal(server.received().length, 105);
+    assert.equal(a.pendingCount() + b.pendingCount(), 0);
+  });
+
+  test("잠금이 없어도: 숨겨진 탭의 기록을 다른 탭이 보내면, 그 탭은 돌아와서 다시 보내지 않는다", async () => {
+    const store = createMemoryStore();
+    const server = fakeServer();
+    server.status = 500;
+    const a = tabOn(store, server);
+    const b = tabOn(store, server);
+    for (let i = 0; i < 40; i += 1) b.enqueue(row(`tab_b_${i}`));
+    b.flushOnHide(); // 500
+    await settle();
+    server.status = 201;
+    server.calls.length = 0;
+    a.enqueue(row("tab_a_1"));
+    a.enqueue(row("tab_a_2"));
+    await a.flush();
+    assert.deepEqual(server.calls.map((call) => call.count), [42]);
+    await b.flush(); // b 가 다시 보인다
+    assert.equal(server.calls.length, 1, "b 는 이미 들어간 제 행을 다시 보내지 않는다");
+    assert.equal(server.received().length, 42);
+    assert.equal(b.pendingCount(), 0);
+  });
+
+  test("다른 탭이 보낸 표시까지 지워져 제 행을 되살려도, 새 기록과 섞지 않고 409 면 한 행씩 보내 반씩 나누는 일이 번지지 않는다", async () => {
+    const store = createMemoryStore();
+    const server = fakeServer();
+    server.status = 500;
+    const a = tabOn(store, server);
+    const b = tabOn(store, server);
+    ["tab_b_1", "tab_b_2", "tab_b_3"].forEach((name) => b.enqueue(row(name)));
+    await b.flush(); // 500
+    server.status = 201;
+    await a.flush(); // a 가 b 의 세 행을 보낸다
+    assert.equal(server.received().length, 3);
+    store.removeItem(SENT_KEY); // 다른 탭의 옛 캐시 쓰기가 보낸 표시를 덮었다고 치자
+    server.calls.length = 0;
+    b.enqueue(row("tab_b_new"));
+    await b.flush();
+    // 새 기록 1개, 되살린 3개 묶음(409), 그 3개를 한 행씩. 예전처럼 네 행을 한 묶음에 실으면 409 → 반씩 나눠 7번
+    assert.deepEqual(server.calls.map((call) => call.count), [1, 3, 1, 1, 1]);
+    assert.deepEqual(server.received().map((r) => r.name), ["tab_b_1", "tab_b_2", "tab_b_3", "tab_b_new"]);
+    assert.equal(b.pendingCount(), 0);
+    assert.equal(store.getItem(UNCONFIRMED_KEY), null);
+  });
+
+  test("계정이 바뀐 뒤에는 큐에서 빠진 제 행을 되살리지 않는다(다른 탭이 옛 계정으로 보냈을 수 있다)", async () => {
+    assert.equal(tokenSubject(jwt("user-1")), "user-1");
+    assert.equal(tokenSubject("token-1"), null);
+    assert.equal(tokenSubject("a.%%%.c"), null);
+    const store = createMemoryStore();
+    const server = fakeServer();
+    server.status = 500;
+    const user1 = jwt("user-1");
+    const user2 = jwt("user-2");
+    let token = user1;
+    const getToken = async () => token;
+    const peekToken = () => token;
+    const a = tabOn(store, server, { getToken, peekToken });
+    const b = tabOn(store, server, { getToken, peekToken });
+    ["tab_b_1", "tab_b_2"].forEach((name) => b.enqueue(row(name)));
+    await b.flush(); // user-1 로 보내려다 500
+    server.status = 201;
+    await a.flush(); // a 가 user-1 로 보낸다
+    assert.equal(server.received(user1).length, 2);
+    store.removeItem(SENT_KEY);
+    token = user2; // 세션을 잃어 새 익명 계정
+    server.calls.length = 0;
+    b.enqueue(row("after_switch"));
+    await b.flush();
+    assert.deepEqual(server.received(user2).map((r) => r.name), ["after_switch"], "옛 계정으로 들어간 행이 새 계정에 또 들어가지 않는다");
+    assert.deepEqual(server.calls.map((call) => call.count), [1]);
+    assert.equal(b.pendingCount(), 0);
   });
 });
 
@@ -821,6 +952,43 @@ describe("MVP 데이터 초기화", () => {
     release();
     await reset;
     assert.deepEqual(order, ["post-start", "post-end", "delete"]);
+  });
+
+  test("다른 탭이 보내는 중인 묶음도 도착한 뒤에 삭제한다(보내기 잠금을 함께 쓴다)", async () => {
+    const store = createMemoryStore();
+    const withLock = serialLock();
+    const server = fakeServer();
+    let release;
+    const otherTab = createEventPipeline({
+      store,
+      timers: fakeClock().timers,
+      getToken: async () => "token-1",
+      peekToken: () => "token-1",
+      post: (rows, token, keepalive) => new Promise((resolve) => (release = () => resolve(server.post(rows, token, keepalive)))),
+      isHeld: () => store.getItem(RESET_PENDING_KEY) !== null,
+      withLock,
+    });
+    const deletes = [];
+    const { analytics } = analyticsWith({
+      store,
+      withLock,
+      deleteServerDataAndSignOut: async () => {
+        deletes.push(server.received("token-1").length);
+        server.byToken.delete("token-1"); // delete_my_data
+        return "done";
+      },
+    });
+    otherTab.enqueue(row("other_tab_before_reset"));
+    const otherFlush = otherTab.flush();
+    await settle(); // 다른 탭의 묶음이 옛 계정 토큰으로 나가는 중
+    analytics.clear();
+    const reset = analytics.resetServerData();
+    await settle();
+    assert.deepEqual(deletes, [], "다른 탭의 요청이 끝나기 전에는 지우지 않는다");
+    release();
+    await Promise.all([otherFlush, reset]);
+    assert.deepEqual(deletes, [1], "그 묶음이 들어간 뒤에 지운다");
+    assert.equal(server.received("token-1").length, 0, "초기화 전 기록이 서버에 남지 않는다");
   });
 });
 

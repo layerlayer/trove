@@ -10,14 +10,23 @@
  * 보내지 못한 기록을 쌓아 두는 localStorage 키(최대 QUEUE_MAX 개, 넘치면 오래된 것부터 버린다). 같은 브라우저의 모든 탭이
  * 함께 쓴다. 탭마다 localStorage 를 따로 캐시해 다른 탭의 쓰기가 조금 늦게 보이므로, 한 탭이 옛 값을 바탕으로 쓰면 다른 탭이
  * 방금 넣은 행이 지워질 수 있다. 그래서 각 탭은 자기가 넣은 행을 서버가 받았다고 확인할 때까지 메모리에도 들고 있다가,
- * 이 키를 쓸 때마다 빠진 것을 되살리고 직접 보낸다(다른 탭이 이미 보냈으면 409 중복으로 끝난다)
+ * 이 키를 쓸 때마다 빠진 것을 되살리고 직접 보낸다. 다른 탭이 대신 보내 확인한 행은 SENT_KEY 로 알아보고 되살리지 않는다.
+ * 거기에도 없으면 이미 들어갔을 수 있으므로 새 기록과 섞지 않고 따로 보낸다(409 면 반씩 나누지 않고 한 행씩)
  */
 export const QUEUE_KEY = "trove-events-queue-v1";
+/**
+ * 서버가 받았다고(2xx·중복) 확인했거나 고칠 수 없어 버린 최근 행의 client_event_id(최대 SENT_MAX 개). 같은 브라우저의 탭들이
+ * 함께 쓴다. 한 탭이 다른 탭의 행까지 보내고 큐에서 지웠을 때, 그 행을 넣은 탭이 "옛 캐시로 덮어써 지워진 것"으로 알고
+ * 되살려 다시 보내지 않게 한다
+ */
+export const SENT_KEY = "trove-events-sent-v1";
+export const SENT_MAX = 1_000;
 /** 마지막 MVP 데이터 초기화 시각(ISO). 다른 탭이 그 전에 만든 기록은 큐에 되살리지도 보내지도 않는다 */
 export const CLEARED_KEY = "trove-events-cleared-at";
 /**
- * keepalive 로 보냈지만 페이지가 닫혀 결과를 모르는 행의 client_event_id. 대개 이미 들어갔으므로 다음 flush 는
- * 이 행들을 새 기록과 한 묶음에 싣지 않고(섞으면 묶음 전체가 409 로 돌아와 반씩 나눠 다시 보내야 한다) 한 행씩 보낸다
+ * keepalive 로 보냈지만 페이지가 닫혀 결과를 모르는 행, 또는 다른 탭이 이미 보냈을 수 있는데 되살린 행의 client_event_id.
+ * 이미 들어갔을 수 있으므로 다음 flush 는 이 행들을 새 기록과 한 묶음에 싣지 않고(섞으면 묶음 전체가 409 로 돌아와 반씩
+ * 나눠 다시 보내야 한다) 따로 한 묶음으로 보내고, 409 면 한 행씩 보낸다
  */
 export const UNCONFIRMED_KEY = "trove-events-unconfirmed-v1";
 /** 예전 버전이 이 기기에 남긴 최근 200개 기록. 서버 모드에서 계정당 한 번 올리고 지운다 */
@@ -104,6 +113,22 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 export function isUuid(value: unknown): value is string {
   return typeof value === "string" && UUID_PATTERN.test(value);
+}
+
+/**
+ * 사용자 토큰(JWT)의 sub(계정 id). JWT 가 아니거나 읽을 수 없으면 null. 서명은 확인하지 않는다:
+ * 이 탭이 보내는 계정이 바뀌었는지 볼 때만 쓴다
+ */
+export function tokenSubject(token: string): string | null {
+  try {
+    const part = token.split(".")[1];
+    if (!part || typeof atob !== "function") return null;
+    const base64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const payload = JSON.parse(atob(base64 + "=".repeat((4 - (base64.length % 4)) % 4))) as { sub?: unknown } | null;
+    return typeof payload?.sub === "string" && payload.sub ? payload.sub : null;
+  } catch {
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -289,22 +314,49 @@ export function writeQueue(store: KeyValueStore, rows: ServerEventRow[]): void {
   }
 }
 
-function readUnconfirmed(store: KeyValueStore): Set<string> {
+function readIds(store: KeyValueStore, key: string): Set<string> {
   try {
-    const parsed = JSON.parse(store.getItem(UNCONFIRMED_KEY) ?? "[]") as unknown;
+    const parsed = JSON.parse(store.getItem(key) ?? "[]") as unknown;
     return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
   } catch {
     return new Set();
   }
 }
 
-function writeUnconfirmed(store: KeyValueStore, ids: Set<string>): void {
+/** 넘치면 오래된(앞쪽) id 부터 버린다 */
+function writeIds(store: KeyValueStore, key: string, ids: Set<string>, max: number): void {
   try {
-    if (ids.size === 0) store.removeItem(UNCONFIRMED_KEY);
-    else store.setItem(UNCONFIRMED_KEY, JSON.stringify(capQueue([...ids])));
+    if (ids.size === 0) store.removeItem(key);
+    else store.setItem(key, JSON.stringify(capQueue([...ids], max)));
   } catch {
-    // 표시를 못 남기면 다음 flush 가 예전처럼 나눠 보낸다(잃는 것은 없다)
+    // 표시를 못 남겨도 잃는 것은 없다(요청이 조금 늘 뿐이다)
   }
+}
+
+function readUnconfirmed(store: KeyValueStore): Set<string> {
+  return readIds(store, UNCONFIRMED_KEY);
+}
+
+function writeUnconfirmed(store: KeyValueStore, ids: Set<string>): void {
+  writeIds(store, UNCONFIRMED_KEY, ids, QUEUE_MAX);
+}
+
+/** 이미 들어갔을 수 있는 행으로 표시한다. 어느 탭이든 새 기록과 한 묶음에 싣지 않고 한 행씩 보낸다 */
+function markUnconfirmed(store: KeyValueStore, ids: string[]): void {
+  const marked = readUnconfirmed(store);
+  const before = marked.size;
+  ids.forEach((id) => marked.add(id));
+  if (marked.size !== before) writeUnconfirmed(store, marked);
+}
+
+/** 확인된 행의 id 를 SENT_KEY 끝에 붙인다(최근 SENT_MAX 개만 남긴다) */
+function rememberSent(store: KeyValueStore, ids: string[]): void {
+  const sent = readIds(store, SENT_KEY);
+  ids.forEach((id) => {
+    sent.delete(id);
+    sent.add(id);
+  });
+  writeIds(store, SENT_KEY, sent, SENT_MAX);
 }
 
 /** 표시에서 ids 를 뗀다(들어갔거나, 페이지가 살아 있어 결과를 알게 된 행) */
@@ -398,10 +450,13 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
   const { store, timers } = deps;
   let memory: ServerEventRow[] = [];
   /**
-   * 이 탭이 저장 큐에 넣었지만 서버가 받았다고(2xx·중복) 아직 확인하지 않은 행(고칠 수 없어 버린 행도 뺀다).
-   * 다른 탭이 옛 캐시로 저장 큐를 덮어써 지워도 다음 쓰기 때 되살리고 보낸다. 넣은 순서대로, 최대 QUEUE_MAX 개
+   * 이 탭이 저장 큐에 넣었지만 서버가 받았다고(2xx·중복) 아직 확인하지 않은 행(고칠 수 없어 버린 행도 뺀다)과, 이 탭이 그 행을
+   * 처음 보내려 할 때의 계정(토큰의 sub, 모르면 null). 다른 탭이 옛 캐시로 저장 큐를 덮어써 지워도 다음 쓰기 때 되살리고 보낸다.
+   * 넣은 순서대로, 최대 QUEUE_MAX 개
    */
-  let own = new Map<string, ServerEventRow>();
+  let own = new Map<string, { row: ServerEventRow; user: string | null }>();
+  /** 이 탭이 마지막으로 쓴 토큰의 계정(토큰이 JWT 가 아니면 null) */
+  let user: string | null = null;
   let debounceTimer: unknown = null;
   let maxWaitTimer: unknown = null;
   let retryTimer: unknown = null;
@@ -457,60 +512,102 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
   }
 
   function keepOwn(rows: ServerEventRow[], front = false) {
-    if (front) own = new Map([...rows.map((row): [string, ServerEventRow] => [row.client_event_id, row]), ...own]);
-    else rows.forEach((row) => own.set(row.client_event_id, row));
+    const entries = rows.map((row): [string, { row: ServerEventRow; user: string | null }] => [row.client_event_id, { row, user }]);
+    if (front) own = new Map([...entries, ...own]);
+    else entries.forEach(([id, entry]) => own.set(id, entry));
     for (const id of own.keys()) {
       if (own.size <= QUEUE_MAX) break;
       own.delete(id);
     }
   }
 
+  /** 이번에 쓸 토큰의 계정을 기억하고, 아직 계정이 붙지 않은 이 탭 몫에 붙인다 */
+  function noteUser(token: string) {
+    user = tokenSubject(token);
+    if (user === null) return;
+    for (const entry of own.values()) entry.user ??= user;
+  }
+
   /**
-   * 지금 보이는 저장 큐 + 거기서 빠진 이 탭 몫. 같은 id 는 하나만, drop 과 다른 탭에서 초기화하기 전에 만든 행은 뺀다.
-   * changed: 저장된 값과 달라 다시 써야 하는지
+   * 지금 보이는 저장 큐 + 거기서 빠진 이 탭 몫 + 새로 넣을 adding. 같은 id 는 하나만, drop 과 다른 탭에서 초기화하기 전에
+   * 만든 행, 이미 확인된 행(SENT_KEY)은 뺀다. changed: 저장된 값과 달라 다시 써야 하는지
    */
-  function queued(drop?: Set<string>): { rows: ServerEventRow[]; changed: boolean } {
+  function queued(drop?: Set<string>, adding: ServerEventRow[] = []): { rows: ServerEventRow[]; changed: boolean } {
     const cutoff = clearedAt();
     const beforeReset = (row: ServerEventRow) => cutoff > 0 && !(Date.parse(row.client_at) >= cutoff);
-    for (const [id, row] of own) if (beforeReset(row)) own.delete(id);
+    let sent: Set<string> | null = null;
+    const confirmed = (id: string) => (sent ??= readIds(store, SENT_KEY)).has(id);
     const rows: ServerEventRow[] = [];
     const seen = new Set<string>();
     let changed = false;
     for (const row of readQueue(store)) {
-      if (seen.has(row.client_event_id) || drop?.has(row.client_event_id) || beforeReset(row)) {
+      const id = row.client_event_id;
+      if (seen.has(id) || drop?.has(id) || beforeReset(row) || confirmed(id)) {
         changed = true;
         continue;
       }
+      seen.add(id);
+      rows.push(row);
+    }
+    const back: string[] = [];
+    for (const [id, entry] of own) {
+      if (seen.has(id) || drop?.has(id)) continue;
+      // 저장 큐에서 빠졌다. 다른 탭이 보내 확인했거나 초기화 전 기록이거나, 이 탭이 보내려던 계정이 바뀌었으면
+      // (그 사이 다른 탭이 옛 계정으로 보냈을 수 있다) 버린다
+      if (beforeReset(entry.row) || confirmed(id) || (entry.user !== null && user !== null && entry.user !== user)) {
+        own.delete(id);
+        continue;
+      }
+      // 옛 캐시 쓰기에 지워졌거나, 다른 탭이 보낸 표시(SENT_KEY)까지 덮였다. 이미 들어갔을 수도 있어 새 기록과 섞지 않는다
+      seen.add(id);
+      rows.push(entry.row);
+      back.push(id);
+      changed = true;
+    }
+    for (const row of adding) {
+      if (seen.has(row.client_event_id) || beforeReset(row)) continue;
       seen.add(row.client_event_id);
       rows.push(row);
-    }
-    for (const row of own.values()) {
-      if (seen.has(row.client_event_id) || drop?.has(row.client_event_id)) continue;
       changed = true;
-      rows.push(row);
     }
+    if (back.length > 0) markUnconfirmed(store, back);
     return { rows, changed };
   }
 
-  /** 저장 큐를 읽은 그대로 다시 쓰되 drop 은 빼고 빠진 이 탭 몫은 되살린다. 다른 탭 행은 지우지 않는다. 바뀐 게 없으면 쓰지 않는다 */
-  function syncQueue(drop?: Set<string>) {
-    const { rows, changed } = queued(drop);
-    if (changed) writeQueue(store, rows);
+  /**
+   * 저장 큐를 읽은 그대로 다시 쓰되 drop 은 빼고 빠진 이 탭 몫은 되살리고 adding 은 뒤에(front 면 앞에) 붙인다(own 에도 넣는다).
+   * 다른 탭 행은 지우지 않는다. 바뀐 게 없으면 쓰지 않는다
+   */
+  function syncQueue(drop?: Set<string>, adding: ServerEventRow[] = [], front = false): void {
+    const { rows, changed } = queued(drop, adding);
+    if (adding.length > 0) {
+      const kept = new Set(idsOf(rows));
+      keepOwn(
+        adding.filter((row) => kept.has(row.client_event_id)),
+        front,
+      );
+    }
+    if (!changed) return;
+    if (!front) {
+      writeQueue(store, rows);
+      return;
+    }
+    const first = new Set(idsOf(adding));
+    writeQueue(store, [...rows.filter((row) => first.has(row.client_event_id)), ...rows.filter((row) => !first.has(row.client_event_id))]);
   }
 
   /** 메모리 큐를 저장 큐 뒤에 붙인다. 보내는 도중 페이지가 닫혀도 다음 시작 때 남아 있게. 행은 확인될 때까지 own 에도 남는다 */
   function persistMemory() {
-    if (memory.length > 0) {
-      keepOwn(memory);
-      memory = [];
-    }
-    syncQueue();
+    const adding = memory;
+    memory = [];
+    syncQueue(undefined, adding);
   }
 
-  /** 서버가 받았거나(중복 포함) 고칠 수 없어 버린 행을 큐와 own 에서 뺀다 */
+  /** 서버가 받았거나(중복 포함) 고칠 수 없어 버린 행을 큐와 own 에서 빼고, 다른 탭도 알도록 SENT_KEY 에 남긴다 */
   function removeFromQueue(ids: string[]) {
     if (ids.length === 0) return;
     ids.forEach((id) => own.delete(id));
+    rememberSent(store, ids);
     syncQueue(new Set(ids));
     unmarkUnconfirmed(store, ids);
   }
@@ -527,8 +624,11 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
     }
   }
 
-  /** 한 묶음을 보낸다. 409·DB 제한 위반이면 반으로 나눠 다시 보내서, 이미 있는 행과 고칠 수 없는 행만 버린다 */
-  async function sendBatch(rows: ServerEventRow[], token: string): Promise<BatchResult> {
+  /**
+   * 한 묶음을 보낸다. 409·DB 제한 위반이면 반으로 나눠(singly 면 한 행씩) 다시 보내서, 이미 있는 행과 고칠 수 없는 행만 버린다.
+   * singly: 이미 들어간 행이 많을 수 있는 묶음. 반씩 나누면 다 들어간 N 행에 2N-1 번이 들지만 한 행씩이면 N 번이다
+   */
+  async function sendBatch(rows: ServerEventRow[], token: string, singly = false): Promise<BatchResult> {
     const outcome = await (async () => {
       const ids = idsOf(rows);
       ids.forEach((id) => inflight.add(id));
@@ -542,6 +642,15 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
     if (outcome === "ok") return { done: idsOf(rows), retry: false };
     if (outcome === "retry") return { done: [], retry: true };
     if (rows.length === 1) return { done: idsOf(rows), retry: false };
+    if (singly) {
+      const done: string[] = [];
+      for (const row of rows) {
+        const result = await sendBatch([row], token);
+        done.push(...result.done);
+        if (result.retry) return { done, retry: true };
+      }
+      return { done, retry: false };
+    }
     const middle = Math.ceil(rows.length / 2);
     const left = await sendBatch(rows.slice(0, middle), token);
     if (left.retry) return left;
@@ -556,13 +665,15 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
       const rows = sendable();
       const unconfirmed = readUnconfirmed(store);
       const fresh = unconfirmed.size === 0 ? rows : rows.filter((row) => !unconfirmed.has(row.client_event_id));
-      // 새 기록을 먼저 묶어 보내고, keepalive 결과를 모르는 행은 한 행씩(이미 있으면 409 하나로 끝난다)
-      const batch = fresh.length > 0 ? fresh.slice(0, BATCH_MAX) : rows.slice(0, 1);
+      // 새 기록을 먼저 묶어 보낸다. 이미 들어갔을 수 있는 행(keepalive 결과 모름, 되살린 행)은 그다음 따로 한 묶음으로
+      // 보내 보고, 409 면 반씩 나누지 않고 한 행씩(이미 있는 행마다 409 하나로 끝난다)
+      const singly = fresh.length === 0;
+      const batch = (singly ? rows : fresh).slice(0, BATCH_MAX);
       if (batch.length === 0) {
         failures = 0;
         return progressed;
       }
-      const result = await sendBatch(batch, token);
+      const result = await sendBatch(batch, token, singly);
       if (startEpoch !== epoch) return progressed;
       removeFromQueue(result.done);
       if (result.retry) {
@@ -591,6 +702,7 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
     }
     // 저장 큐 쓰기도 잠금 안에서: 다른 탭이 보내고 지우는 사이에 끼어드는 일을 줄인다
     const run = () => {
+      noteUser(token);
       persistMemory();
       return sendAll(token, startEpoch);
     };
@@ -618,15 +730,16 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
 
   function flushOnHide() {
     clearScheduled();
+    const token = deps.isHeld() ? null : deps.peekToken();
+    if (token) noteUser(token);
     persistMemory();
-    if (deps.isHeld()) return;
-    const token = deps.peekToken();
     if (!token) return;
     const batch: ServerEventRow[] = [];
     let bytes = 2;
+    const rows = sendable();
     const unconfirmed = readUnconfirmed(store);
-    for (const row of sendable()) {
-      // 지난번 keepalive 의 결과를 모르는 행은 싣지 않는다. 이미 들어갔으면 이 요청 전체가 409 로 거절된다
+    for (const row of rows) {
+      // 지난번 keepalive 의 결과를 모르는 행·되살린 행은 싣지 않는다. 이미 들어갔으면 이 요청 전체가 409 로 거절된다
       if (unconfirmed.has(row.client_event_id)) continue;
       const size = byteLength(JSON.stringify(row)) + 1;
       if (batch.length >= BATCH_MAX || bytes + size > KEEPALIVE_MAX_BYTES) break;
@@ -657,10 +770,7 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
     },
     prepend(rows) {
       if (rows.length === 0) return;
-      keepOwn(rows, true);
-      const current = queued().rows;
-      const front = new Set(idsOf(rows));
-      writeQueue(store, [...current.filter((row) => front.has(row.client_event_id)), ...current.filter((row) => !front.has(row.client_event_id))]);
+      syncQueue(undefined, rows, true);
     },
     flush,
     flushOnHide,
@@ -668,6 +778,7 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
       epoch += 1;
       memory = [];
       own = new Map();
+      user = null;
       clearScheduled();
       clearTimer(retryTimer);
       retryTimer = null;
@@ -675,6 +786,7 @@ export function createEventPipeline(deps: PipelineDeps): EventPipeline {
       inflight.clear();
       writeQueue(store, []);
       writeUnconfirmed(store, new Set());
+      writeIds(store, SENT_KEY, new Set(), SENT_MAX);
       try {
         // 다른 탭이 들고 있던 초기화 전 기록이 큐에 되살아나 새 계정으로 가지 않게
         store.setItem(CLEARED_KEY, new Date((deps.now ?? Date.now)()).toISOString());
@@ -871,9 +983,11 @@ export function createAnalytics(deps: AnalyticsDeps): Analytics {
     if (!force && !isResetPending()) return Promise.resolve();
     resetFlight = (async () => {
       try {
-        // 이미 나가는 중인 묶음이 옛 계정으로 도착한 뒤에 지우도록 기다린다
+        // 이미 나가는 중인 묶음이 옛 계정으로 도착한 뒤에 지우도록 기다린다. 다른 탭이 보내는 중이면 그 탭이 쥔 보내기
+        // 잠금이 풀릴 때까지도 기다린다(그 탭은 지금 묶음을 마치고 표식을 보고 멈춘다)
         await getPipeline().idle();
-        const outcome = await deps.deleteServerDataAndSignOut().catch(() => "retry" as const);
+        const remove = () => deps.deleteServerDataAndSignOut();
+        const outcome = await (deps.withLock ? deps.withLock(remove) : remove()).catch(() => "retry" as const);
         if (outcome === "done") {
           clearResetRetry();
           store.removeItem(RESET_PENDING_KEY);

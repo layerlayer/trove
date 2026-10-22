@@ -129,7 +129,7 @@ npm run data:push:uninstall
 동작 요약:
 
 - `src/lib/supabase.ts` 클라이언트(필요할 때만 불러옴)와 익명 세션. 세션이 없을 때만, 여러 탭·새로고침에서도 한 번만 만들고, 화면을 막지 않으며, 실패하면 조금 뒤 다시 합니다.
-- `src/lib/analytics-core.ts` 묶음 전송(3초 모아서, 또는 화면이 숨겨지거나 닫힐 때 keepalive), 재시도 큐(localStorage `trove-events-queue-v1`, 최대 500개, 넘치면 오래된 것부터 버림. 같은 브라우저의 탭들이 함께 쓰고, 각 탭은 제가 넣은 기록을 서버가 받을 때까지 메모리에도 들고 있어 다른 탭이 큐를 덮어써도 되살려 보냄), 공통 필드(기기 ID, 30분 쉬면 바뀌는 방문 ID, 경로, 홈 화면 앱 여부, 앱 버전, 브라우저 요약), 검색어 앞 100자만 보냄, 같은 기록이 두 번 들어가지 않게 `client_event_id`.
+- `src/lib/analytics-core.ts` 묶음 전송(3초 모아서, 또는 화면이 숨겨지거나 닫힐 때 keepalive), 재시도 큐(localStorage `trove-events-queue-v1`, 최대 500개, 넘치면 오래된 것부터 버림. 같은 브라우저의 탭들이 함께 쓰고, 각 탭은 제가 넣은 기록을 서버가 받을 때까지 메모리에도 들고 있어 다른 탭이 큐를 덮어써도 되살려 보냄. 다른 탭이 대신 보낸 기록은 `trove-events-sent-v1` 로 알아보고 다시 보내지 않음), 공통 필드(기기 ID, 30분 쉬면 바뀌는 방문 ID, 경로, 홈 화면 앱 여부, 앱 버전, 브라우저 요약), 검색어 앞 100자만 보냄, 같은 기록이 두 번 들어가지 않게 `client_event_id`.
 - 프로필 → MVP 데이터 초기화: 서버의 `delete_my_data()` 로 지금 이 브라우저(또는 홈 화면 앱)의 임시 계정 기록을 지우고 로그아웃한 뒤, 다음 기록 때 새 임시 계정을 만듭니다. Safari·홈 화면 앱·카카오톡 안 브라우저의 기록은 각각에서 초기화해야 지워집니다. 인터넷이 안 되면 다음에 앱을 열 때 마저 지우고, 그동안 새 기록은 보내지 않고 모아 둡니다.
 - Supabase 로그에 가끔 보이는 `409`(duplicate key, `events_user_client_event_key`)는 정상입니다. 창을 닫을 때 keepalive 로 보낸 기록은 도착했는지 알 수 없어 다음에 한 번 더 보내고, 이미 있으면 서버가 409 로 거절합니다.
 
@@ -139,7 +139,7 @@ npm run data:push:uninstall
 - `npm run test:db` 임시 PostgreSQL(15 이상) 을 띄워 Supabase 흉내(`auth` 스키마, `anon`·`authenticated`·`service_role` 역할) 위에 두 SQL 을 돌리고 보안 규칙을 확인합니다. 남의 행은 못 보고·못 고치고·못 지움, `events` 는 넣기만 되고 `user_id` 를 속일 수 없음, 로그인 전(anon)은 아무것도 못 함, `is_internal` 은 앱에서 못 바꿈, `delete_my_data` 는 내 것만, `admin` 은 앱에서 안 보임 등. Supabase 의 예전 자동 권한 방식과 새 방식으로 두 번 돕니다. `npm test`·Vercel 빌드에는 들어가지 않고, PostgreSQL 이 없으면 이유를 말하고 건너뜁니다.
   - 맥: `brew install postgresql@16` 뒤 `PG_BIN=$(brew --prefix postgresql@16)/bin npm run test:db`
   - root 로 돌리면 서버는 `PG_RUN_AS`(기본 `postgres`) 사용자로 띄웁니다.
-- `npm run smoke` Playwright(Chromium)로 실제 빌드를 띄워 봅니다. 실제 Supabase 에는 접속하지 않습니다. (a) 환경 변수 없이: 홈이 뜨고 다른 주소로는 요청이 하나도 없음 (b) 가짜 Supabase 서버(`scripts/smoke/mock-supabase.mjs`)를 향하게: 익명 가입은 한 번, 묶음 전송과 공통 필드, 500 뒤 재전송, 탭 닫을 때 keepalive, 초기화, 두 탭이 500 중에 동시에 숨겨져도 기록이 모두 한 번씩 도착 (c) 개발 서버(StrictMode)에서도 가입 한 번. Playwright 는 이 저장소 의존성이 아니라서 `npm i -g playwright && npx playwright install chromium` 처럼 전역에 깔아 두거나 `PLAYWRIGHT_MODULE=<playwright 폴더>` 로 위치를 알려 줍니다.
+- `npm run smoke` Playwright(Chromium)로 실제 빌드를 띄워 봅니다. 실제 Supabase 에는 접속하지 않습니다. (a) 환경 변수 없이: 홈이 뜨고 다른 주소로는 요청이 하나도 없음 (b) 가짜 Supabase 서버(`scripts/smoke/mock-supabase.mjs`)를 향하게: 익명 가입은 한 번, 묶음 전송과 공통 필드, 500 뒤 재전송, 탭 닫을 때 keepalive, 초기화, 두 탭이 500 중에 동시에 숨겨져도 기록이 모두 한 번씩 도착하고 다른 탭이 보낸 기록을 다시 보내지 않음(409 요청 수 확인) (c) 개발 서버(StrictMode)에서도 가입 한 번. Playwright 는 이 저장소 의존성이 아니라서 `npm i -g playwright && npx playwright install chromium` 처럼 전역에 깔아 두거나 `PLAYWRIGHT_MODULE=<playwright 폴더>` 로 위치를 알려 줍니다.
 
 ## 구현된 흐름
 
