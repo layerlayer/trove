@@ -1,198 +1,5 @@
 [
   {
-    "id": "kpopping:2026-next-chapter:album_release:발매일",
-    "slug": "kpopping-2026-next-chapter-album-release",
-    "title": "Hearts2Hearts Next Chapter",
-    "category": "music",
-    "categoryLabel": "음악",
-    "releaseAt": "2026-10-16",
-    "releaseWindow": null,
-    "datePrecision": "exact_day",
-    "dateLabel": "발매일",
-    "status": "released",
-    "tags": [
-      "앨범",
-      "kpopping"
-    ],
-    "contentFormat": "싱글",
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "출처",
-        "value": "kpopping"
-      }
-    ],
-    "sourceName": "kpopping",
-    "sourceUrl": "https://kpopping.com/musicalbum/2026-next-chapter",
-    "description": "",
-    "lastVerifiedAt": "2026-10-16T22:07:52.290Z",
-    "endsAt": null,
-    "scheduleType": "album_release",
-    "entityName": "Hearts2Hearts",
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
-    "id": "ticketlink:66211:ticket_open:티켓오픈",
-    "slug": "ticketlink-66211-ticket-open",
-    "title": "2026 소통왕 말자쑈! - 창원 티켓오픈 안내",
-    "category": "concert",
-    "categoryLabel": "공연",
-    "releaseAt": "2026-10-16T11:00:00+09:00",
-    "releaseWindow": null,
-    "datePrecision": "exact_time",
-    "dateLabel": "티켓오픈",
-    "status": "released",
-    "tags": [
-      "기타",
-      "티켓링크"
-    ],
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "공연장",
-        "value": "창원 MBC홀"
-      },
-      {
-        "label": "출처",
-        "value": "티켓링크"
-      }
-    ],
-    "sourceName": "티켓링크",
-    "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66211",
-    "description": "",
-    "lastVerifiedAt": "2026-10-16T22:07:52.290Z",
-    "endsAt": null,
-    "scheduleType": "ticket_open",
-    "entityName": null,
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
-    "id": "ticketlink:66220:ticket_open:티켓오픈",
-    "slug": "ticketlink-66220-ticket-open",
-    "title": "[단독판매] 정동하 x 알리 < SONG : THE BATTLE OF LEGENDS > - 순천 티켓오픈 안내",
-    "category": "concert",
-    "categoryLabel": "공연",
-    "releaseAt": "2026-10-16T14:00:00+09:00",
-    "releaseWindow": null,
-    "datePrecision": "exact_time",
-    "dateLabel": "티켓오픈",
-    "status": "released",
-    "tags": [
-      "기타",
-      "티켓링크"
-    ],
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "공연장",
-        "value": "순천문화예술회관 대극장"
-      },
-      {
-        "label": "출처",
-        "value": "티켓링크"
-      }
-    ],
-    "sourceName": "티켓링크",
-    "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66220",
-    "description": "",
-    "lastVerifiedAt": "2026-10-16T22:07:52.290Z",
-    "endsAt": null,
-    "scheduleType": "ticket_open",
-    "entityName": null,
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
-    "id": "ticketlink:66227:ticket_open:티켓오픈",
-    "slug": "ticketlink-66227-ticket-open",
-    "title": "[단독판매] 공감 U-HEE - 대구 티켓오픈 안내",
-    "category": "concert",
-    "categoryLabel": "공연",
-    "releaseAt": "2026-10-16T18:00:00+09:00",
-    "releaseWindow": null,
-    "datePrecision": "exact_time",
-    "dateLabel": "티켓오픈",
-    "status": "released",
-    "tags": [
-      "기타",
-      "티켓링크"
-    ],
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "공연장",
-        "value": "대구문화예술회관 비슬홀"
-      },
-      {
-        "label": "출처",
-        "value": "티켓링크"
-      }
-    ],
-    "sourceName": "티켓링크",
-    "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66227",
-    "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
-    "endsAt": null,
-    "scheduleType": "ticket_open",
-    "entityName": null,
-    "opsFlags": [
-      "changed_after_approval",
-      "source_removed"
-    ]
-  },
-  {
-    "id": "ticketlink:66203:ticket_open:티켓오픈",
-    "slug": "ticketlink-66203-ticket-open",
-    "title": "[단독판매] 2026 하현상 콘서트 < Funny Family > 추가 회차 티켓오픈 안내",
-    "category": "concert",
-    "categoryLabel": "공연",
-    "releaseAt": "2026-10-16T19:00:00+09:00",
-    "releaseWindow": null,
-    "datePrecision": "exact_time",
-    "dateLabel": "티켓오픈",
-    "status": "released",
-    "tags": [
-      "콘서트",
-      "티켓링크"
-    ],
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "공연장",
-        "value": "경희대학교 평화의 전당"
-      },
-      {
-        "label": "출처",
-        "value": "티켓링크"
-      }
-    ],
-    "sourceName": "티켓링크",
-    "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66203",
-    "description": "",
-    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
-    "endsAt": null,
-    "scheduleType": "ticket_open",
-    "entityName": null,
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
     "id": "kpopping:2026-all-of-my-life:album_release:발매일",
     "slug": "kpopping-2026-all-of-my-life-album-release",
     "title": "Max Changmin All Of My Life",
@@ -335,7 +142,9 @@
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
-    "opsFlags": []
+    "opsFlags": [
+      "source_removed"
+    ]
   },
   {
     "id": "wikigames:call-of-duty-modern-warfare-4:game_release:출시",
@@ -347,7 +156,7 @@
     "releaseWindow": null,
     "datePrecision": "exact_day",
     "dateLabel": "출시",
-    "status": "confirmed",
+    "status": "released",
     "tags": [
       "게임",
       "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
@@ -368,7 +177,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
+    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -384,7 +193,7 @@
     "releaseWindow": null,
     "datePrecision": "exact_day",
     "dateLabel": "출시",
-    "status": "confirmed",
+    "status": "released",
     "tags": [
       "게임",
       "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
@@ -405,7 +214,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
+    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -442,7 +251,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
+    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -479,7 +288,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
+    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -551,7 +360,7 @@
     "sourceName": "Wikipedia (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/2026_in_South_Korean_music#November",
     "description": "",
-    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
+    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Tomorrow X Together",
@@ -588,7 +397,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#November",
     "description": "",
-    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
+    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -597,14 +406,14 @@
   {
     "id": "kpopping:2026-cute-anxiety:album_release:발매일",
     "slug": "kpopping-2026-cute-anxiety-album-release",
-    "title": "Mujin Cute & Anxiety",
+    "title": "Yves Cute & Anxiety",
     "category": "music",
     "categoryLabel": "음악",
     "releaseAt": "2026-11-20",
     "releaseWindow": null,
     "datePrecision": "exact_day",
     "dateLabel": "발매일",
-    "status": "confirmed",
+    "status": "tentative",
     "tags": [
       "앨범",
       "kpopping"
@@ -622,11 +431,13 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-cute-anxiety",
     "description": "",
-    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
+    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
     "endsAt": null,
     "scheduleType": "album_release",
-    "entityName": "Mujin",
-    "opsFlags": []
+    "entityName": "Yves",
+    "opsFlags": [
+      "changed_after_approval"
+    ]
   },
   {
     "id": "wikigames:dragon-quest-monsters-the-withered-world:game_release:출시",
@@ -659,7 +470,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
+    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -696,7 +507,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
+    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -733,7 +544,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-22T21:30:07.354Z",
+    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
