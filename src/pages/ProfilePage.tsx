@@ -22,6 +22,7 @@ import { StatusBar } from "../components/StatusBar";
 import { useTrove } from "../context/TroveContext";
 import { useReleases } from "../data/ReleaseDataContext";
 import { track } from "../lib/analytics";
+import { supabaseConfig } from "../lib/supabase";
 import { useUnreadNotifications } from "../lib/useUnreadNotifications";
 import type { AlertPreset } from "../types";
 
@@ -196,7 +197,7 @@ export function ProfilePage() {
         ) : null}
         <button className="settings-row is-danger" type="button" onClick={() => setSheet("reset")}>
           <span className="settings-row__icon"><RotateCcw size={20} /></span>
-          <span className="settings-row__copy"><strong>MVP 데이터 초기화</strong><small>관심사·담은 기다림·알림 설정·사용 기록을 이 기기에서 지웁니다.</small></span>
+          <span className="settings-row__copy"><strong>MVP 데이터 초기화</strong><small>관심사·담은 기다림·알림 설정·사용 기록을 {supabaseConfig ? "이 기기와 Trove 서버에서" : "이 기기에서"} 지웁니다.</small></span>
           <ChevronRight size={20} />
         </button>
       </section>
