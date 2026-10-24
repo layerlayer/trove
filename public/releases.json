@@ -181,7 +181,9 @@
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
-    "opsFlags": []
+    "opsFlags": [
+      "source_removed"
+    ]
   },
   {
     "id": "wikigames:one-piece-grand-gourmet:game_release:출시",
@@ -218,7 +220,9 @@
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
-    "opsFlags": []
+    "opsFlags": [
+      "source_removed"
+    ]
   },
   {
     "id": "wikigames:monster-hunter-outlanders:game_release:출시",
@@ -251,7 +255,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
+    "lastVerifiedAt": "2026-10-24T21:30:03.571Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -288,7 +292,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
+    "lastVerifiedAt": "2026-10-24T21:30:03.571Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -360,7 +364,7 @@
     "sourceName": "Wikipedia (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/2026_in_South_Korean_music#November",
     "description": "",
-    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
+    "lastVerifiedAt": "2026-10-24T21:30:03.571Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Tomorrow X Together",
@@ -397,7 +401,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#November",
     "description": "",
-    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
+    "lastVerifiedAt": "2026-10-24T21:30:03.571Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -431,7 +435,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-cute-anxiety",
     "description": "",
-    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
+    "lastVerifiedAt": "2026-10-24T21:30:03.571Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Yves",
@@ -470,7 +474,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
+    "lastVerifiedAt": "2026-10-24T21:30:03.571Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -507,7 +511,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
+    "lastVerifiedAt": "2026-10-24T21:30:03.571Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -544,7 +548,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-23T21:30:06.883Z",
+    "lastVerifiedAt": "2026-10-24T21:30:03.571Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
