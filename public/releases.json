@@ -1,113 +1,5 @@
 [
   {
-    "id": "kpopping:2026-all-of-my-life:album_release:발매일",
-    "slug": "kpopping-2026-all-of-my-life-album-release",
-    "title": "Max Changmin All Of My Life",
-    "category": "music",
-    "categoryLabel": "음악",
-    "releaseAt": "2026-10-19",
-    "releaseWindow": null,
-    "datePrecision": "exact_day",
-    "dateLabel": "발매일",
-    "status": "released",
-    "tags": [
-      "앨범",
-      "kpopping"
-    ],
-    "contentFormat": "미니 앨범",
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "출처",
-        "value": "kpopping"
-      }
-    ],
-    "sourceName": "kpopping",
-    "sourceUrl": "https://kpopping.com/musicalbum/2026-all-of-my-life",
-    "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
-    "endsAt": null,
-    "scheduleType": "album_release",
-    "entityName": "Max Changmin",
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
-    "id": "kpopping:2026-on-our-noise:album_release:발매일",
-    "slug": "kpopping-2026-on-our-noise-album-release",
-    "title": "EVNNE on: our noise",
-    "category": "music",
-    "categoryLabel": "음악",
-    "releaseAt": "2026-10-19",
-    "releaseWindow": null,
-    "datePrecision": "exact_day",
-    "dateLabel": "발매일",
-    "status": "released",
-    "tags": [
-      "앨범",
-      "kpopping"
-    ],
-    "contentFormat": "미니 앨범",
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "출처",
-        "value": "kpopping"
-      }
-    ],
-    "sourceName": "kpopping",
-    "sourceUrl": "https://kpopping.com/musicalbum/2026-on-our-noise",
-    "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
-    "endsAt": null,
-    "scheduleType": "album_release",
-    "entityName": "EVNNE",
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
-    "id": "kpopping:2026-strange-muse:album_release:발매일",
-    "slug": "kpopping-2026-strange-muse-album-release",
-    "title": "NMIXX Strange Muse",
-    "category": "music",
-    "categoryLabel": "음악",
-    "releaseAt": "2026-10-19",
-    "releaseWindow": null,
-    "datePrecision": "exact_day",
-    "dateLabel": "발매일",
-    "status": "released",
-    "tags": [
-      "앨범",
-      "kpopping"
-    ],
-    "contentFormat": "EP",
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "출처",
-        "value": "kpopping"
-      }
-    ],
-    "sourceName": "kpopping",
-    "sourceUrl": "https://kpopping.com/musicalbum/2026-strange-muse",
-    "description": "",
-    "lastVerifiedAt": "2026-10-19T21:30:07.291Z",
-    "endsAt": null,
-    "scheduleType": "album_release",
-    "entityName": "NMIXX",
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
     "id": "wikigames:nintendo-switch-sports-resort:game_release:출시",
     "slug": "wikigames-nintendo-switch-sports-resort-game-release",
     "title": "Nintendo Switch Sports Resort",
@@ -255,7 +147,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-25T21:30:04.247Z",
+    "lastVerifiedAt": "2026-10-26T21:30:02.525Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -292,7 +184,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
     "description": "",
-    "lastVerifiedAt": "2026-10-25T21:30:04.247Z",
+    "lastVerifiedAt": "2026-10-26T21:30:02.525Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -364,7 +256,7 @@
     "sourceName": "Wikipedia (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/2026_in_South_Korean_music#November",
     "description": "",
-    "lastVerifiedAt": "2026-10-25T21:30:04.247Z",
+    "lastVerifiedAt": "2026-10-26T21:30:02.525Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Tomorrow X Together",
@@ -401,7 +293,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#November",
     "description": "",
-    "lastVerifiedAt": "2026-10-25T21:30:04.247Z",
+    "lastVerifiedAt": "2026-10-26T21:30:02.525Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -435,7 +327,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-cute-anxiety",
     "description": "",
-    "lastVerifiedAt": "2026-10-25T21:30:04.247Z",
+    "lastVerifiedAt": "2026-10-26T21:30:02.525Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Yves",
@@ -474,7 +366,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-25T21:30:04.247Z",
+    "lastVerifiedAt": "2026-10-26T21:30:02.525Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -511,7 +403,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-25T21:30:04.247Z",
+    "lastVerifiedAt": "2026-10-26T21:30:02.525Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -548,7 +440,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-10-25T21:30:04.247Z",
+    "lastVerifiedAt": "2026-10-26T21:30:02.525Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
