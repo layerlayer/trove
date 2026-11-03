@@ -1,5 +1,5 @@
 {
-  "publishedAt": "2026-11-02T21:30:03.530Z",
+  "publishedAt": "2026-11-03T21:30:01.907Z",
   "count": 9,
   "byCategory": {
     "game": 6,
@@ -7,9 +7,9 @@
     "music": 2
   },
   "byStatus": {
-    "released": 2,
-    "tentative": 2,
-    "confirmed": 5
+    "released": 3,
+    "confirmed": 5,
+    "tentative": 1
   },
   "held": 3,
   "skippedPast": 16,
