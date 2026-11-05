@@ -14,9 +14,12 @@
     "data:push:install": "node scripts/macos/data-push-agent.mjs install",
     "data:push:uninstall": "node scripts/macos/data-push-agent.mjs uninstall",
     "data:push:status": "node scripts/macos/data-push-agent.mjs status",
-    "test": "node --test \"scripts/test/*.test.mjs\""
+    "test": "node --test \"scripts/test/*.test.mjs\"",
+    "test:db": "node --test \"supabase/tests/*.test.mjs\"",
+    "smoke": "node scripts/smoke/smoke.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
