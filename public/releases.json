@@ -1,83 +1,5 @@
 [
   {
-    "id": "wikigames:monster-hunter-outlanders:game_release:출시",
-    "slug": "wikigames-monster-hunter-outlanders-game-release",
-    "title": "Monster Hunter Outlanders",
-    "category": "game",
-    "categoryLabel": "게임",
-    "releaseAt": "2026-10-29",
-    "releaseWindow": null,
-    "datePrecision": "exact_day",
-    "dateLabel": "출시",
-    "status": "released",
-    "tags": [
-      "게임",
-      "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
-    ],
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "플랫폼",
-        "value": "iOS, Android"
-      },
-      {
-        "label": "출처",
-        "value": "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
-      }
-    ],
-    "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
-    "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
-    "description": "",
-    "lastVerifiedAt": "2026-10-29T21:30:04.643Z",
-    "endsAt": null,
-    "scheduleType": "game_release",
-    "entityName": null,
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
-    "id": "wikigames:phantom-blade-zero:game_release:출시",
-    "slug": "wikigames-phantom-blade-zero-game-release",
-    "title": "Phantom Blade Zero",
-    "category": "game",
-    "categoryLabel": "게임",
-    "releaseAt": "2026-10-29",
-    "releaseWindow": null,
-    "datePrecision": "exact_day",
-    "dateLabel": "출시",
-    "status": "released",
-    "tags": [
-      "게임",
-      "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
-    ],
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "플랫폼",
-        "value": "PC, PS5"
-      },
-      {
-        "label": "출처",
-        "value": "위키백과 게임 출시 목록 (CC BY-SA 4.0)"
-      }
-    ],
-    "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
-    "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#October",
-    "description": "",
-    "lastVerifiedAt": "2026-10-29T21:30:04.643Z",
-    "endsAt": null,
-    "scheduleType": "game_release",
-    "entityName": null,
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
     "id": "ticketlink:66201:ticket_open:티켓오픈",
     "slug": "ticketlink-66201-ticket-open",
     "title": "[단독판매] <슈퍼 루나틱> - 울진 티켓오픈 안내",
@@ -143,7 +65,7 @@
     "sourceName": "Wikipedia (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/2026_in_South_Korean_music#November",
     "description": "",
-    "lastVerifiedAt": "2026-11-04T21:30:03.725Z",
+    "lastVerifiedAt": "2026-11-05T21:30:05.657Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Tomorrow X Together",
@@ -180,7 +102,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#November",
     "description": "",
-    "lastVerifiedAt": "2026-11-04T21:30:03.725Z",
+    "lastVerifiedAt": "2026-11-05T21:30:05.657Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -214,7 +136,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-cute-anxiety",
     "description": "",
-    "lastVerifiedAt": "2026-11-04T21:30:03.725Z",
+    "lastVerifiedAt": "2026-11-05T21:30:05.657Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Yves",
@@ -253,7 +175,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-11-04T21:30:03.725Z",
+    "lastVerifiedAt": "2026-11-05T21:30:05.657Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -290,7 +212,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-11-04T21:30:03.725Z",
+    "lastVerifiedAt": "2026-11-05T21:30:05.657Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -327,7 +249,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-11-04T21:30:03.725Z",
+    "lastVerifiedAt": "2026-11-05T21:30:05.657Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
