@@ -1,44 +1,5 @@
 [
   {
-    "id": "ticketlink:66201:ticket_open:티켓오픈",
-    "slug": "ticketlink-66201-ticket-open",
-    "title": "[단독판매] <슈퍼 루나틱> - 울진 티켓오픈 안내",
-    "category": "concert",
-    "categoryLabel": "공연",
-    "releaseAt": "2026-11-03T10:00:00+09:00",
-    "releaseWindow": null,
-    "datePrecision": "exact_time",
-    "dateLabel": "티켓오픈",
-    "status": "released",
-    "tags": [
-      "기타",
-      "티켓링크"
-    ],
-    "interestIds": [],
-    "thumbnail": "",
-    "gallery": [],
-    "meta": [
-      {
-        "label": "공연장",
-        "value": "울진문화예술회관"
-      },
-      {
-        "label": "출처",
-        "value": "티켓링크"
-      }
-    ],
-    "sourceName": "티켓링크",
-    "sourceUrl": "https://www.ticketlink.co.kr/help/notice/66201",
-    "description": "",
-    "lastVerifiedAt": "2026-10-15T12:17:04.715Z",
-    "endsAt": null,
-    "scheduleType": "ticket_open",
-    "entityName": null,
-    "opsFlags": [
-      "source_removed"
-    ]
-  },
-  {
     "id": "wikipedia:2026-11-perfect-storm-tomorrow-x-together:album_release:release-date",
     "slug": "wikipedia-2026-11-perfect-storm-tomorrow-x-together-album-release-release-date",
     "title": "Tomorrow X Together Perfect Storm",
@@ -65,7 +26,7 @@
     "sourceName": "Wikipedia (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/2026_in_South_Korean_music#November",
     "description": "",
-    "lastVerifiedAt": "2026-11-09T21:30:04.608Z",
+    "lastVerifiedAt": "2026-11-10T21:30:01.970Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Tomorrow X Together",
@@ -102,7 +63,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#November",
     "description": "",
-    "lastVerifiedAt": "2026-11-09T21:30:04.608Z",
+    "lastVerifiedAt": "2026-11-10T21:30:01.970Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -136,7 +97,7 @@
     "sourceName": "kpopping",
     "sourceUrl": "https://kpopping.com/musicalbum/2026-cute-anxiety",
     "description": "",
-    "lastVerifiedAt": "2026-11-09T21:30:04.608Z",
+    "lastVerifiedAt": "2026-11-10T21:30:01.970Z",
     "endsAt": null,
     "scheduleType": "album_release",
     "entityName": "Yves",
@@ -175,7 +136,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-11-09T21:30:04.608Z",
+    "lastVerifiedAt": "2026-11-10T21:30:01.970Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -212,7 +173,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-11-09T21:30:04.608Z",
+    "lastVerifiedAt": "2026-11-10T21:30:01.970Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
@@ -249,7 +210,7 @@
     "sourceName": "위키백과 게임 출시 목록 (CC BY-SA 4.0)",
     "sourceUrl": "https://en.wikipedia.org/wiki/List_of_video_games_released_in_2026#December",
     "description": "",
-    "lastVerifiedAt": "2026-11-09T21:30:04.608Z",
+    "lastVerifiedAt": "2026-11-10T21:30:01.970Z",
     "endsAt": null,
     "scheduleType": "game_release",
     "entityName": null,
